@@ -12,7 +12,8 @@ const KartuKeluargaviewer = ({ dataKK, noKK, headerData }) => {
         <div className="font-sans text-xs border border-gray-400 p-4 mx-auto max-w-5xl bg-white" style={{ minWidth: '800px' }}>
             <div className="flex justify-between items-center mb-4">
                 <div className="text-center">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Lambang_Garuda_Pancasila_PNG.png/1200px-Lambang_Garuda_Pancasila_PNG.png" alt="Garuda Pancasila" className="h-12 mx-auto" />
+                <img src="/images/logo.png" alt="Garuda Pancasila" className="h-12 mx-auto" />
+                    
                     <p className="font-bold">REPUBLIK INDONESIA</p>
                 </div>
                 <div className="text-center">
