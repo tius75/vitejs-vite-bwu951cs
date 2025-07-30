@@ -121,7 +121,6 @@ const createLog = async (userEmail, action) => {
             timestamp: Timestamp.now()
         });
     } catch (error) {
-        // Logging error di sini untuk debug internal, tanpa menyebabkan crash
         console.error("Error creating log entry:", error); 
     }
 };
@@ -1135,8 +1134,8 @@ function DataWarga({ userProfile }) {
                                 <td className="px-6 py-4">{warga.pendidikan}</td><td className="px-6 py-4">{warga.alamat}</td>
                                 <td className="px-6 py-4">{warga.rt}/{warga.rw}</td>
                
-                                {/* Pastikan tombol edit ada di sini */}
-                                <td className="px-6 py-4 flex items-center space-x-2">
+                                {/* Pastikan tombol edit ada di sini, dengan flex-shrink-0 untuk mencegahnya menyusut */}
+                                <td className="px-6 py-4 flex items-center space-x-2 flex-shrink-0">
                                     <button onClick={() => openEditModal(warga)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full"><EditIcon /></button>
                                     <button onClick={() => confirmDelete(warga.id)} className="p-2 text-red-600 hover:bg-red-100 rounded-full"><TrashIcon /></button>
                                 </td>
@@ -1212,9 +1211,18 @@ function WargaModal({ isOpen, onClose, wargaData, userProfile }) {
             kabupatenKota: localStorage.getItem('kabupatenKota') || '',
             kodePos: localStorage.getItem('kodePos') || '',
         };
-        setFormData(wargaData || initialData);
-        if (wargaData?.photoUrl) {
-            setPhotoPreview(wargaData.photoUrl);
+        // Penting: Pastikan semua nilai `undefined` di `wargaData` diubah menjadi `null` atau `''`
+        // agar Firestore tidak menolak saat update.
+        const cleanedWargaData = {};
+        for (const key in (wargaData || {})) {
+            if (Object.prototype.hasOwnProperty.call(wargaData, key)) {
+                cleanedWargaData[key] = wargaData[key] === undefined ? '' : wargaData[key];
+            }
+        }
+        setFormData({ ...initialData, ...cleanedWargaData });
+
+        if (cleanedWargaData.photoUrl) {
+            setPhotoPreview(cleanedWargaData.photoUrl);
         } else {
             setPhotoPreview('');
         }
@@ -1284,15 +1292,22 @@ function WargaModal({ isOpen, onClose, wargaData, userProfile }) {
                     return; 
                 }
             }
+            // Pastikan tidak ada nilai 'undefined' di dalam formData sebelum dikirim ke Firestore
+            const dataToSave = {};
+            for (const key in formData) {
+                if (Object.prototype.hasOwnProperty.call(formData, key)) {
+                    dataToSave[key] = formData[key] === undefined ? '' : formData[key];
+                }
+            }
+            dataToSave.photoUrl = finalPhotoUrl || ''; // Pastikan photoUrl tidak undefined
 
-            const updatedFormData = { ...formData, photoUrl: finalPhotoUrl };
             const wargaCollectionRef = collection(db, `warga`);
             if (wargaData?.id) {
                 const docRef = doc(db, `warga`, wargaData.id);
-                await updateDoc(docRef, updatedFormData);
+                await updateDoc(docRef, dataToSave); // Gunakan dataToSave yang sudah dibersihkan
                 await createLog(userProfile.email, `Memperbarui data warga: ${formData.nama}`);
             } else {
-                await addDoc(wargaCollectionRef, updatedFormData);
+                await addDoc(wargaCollectionRef, dataToSave); // Gunakan dataToSave yang sudah dibersihkan
                 await createLog(userProfile.email, `Menambah warga baru: ${formData.nama}`);
             }
             onClose();
