@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { 
     getAuth, 
     onAuthStateChanged, 
-    createUserWithEmailAndPassword, 
+    // Hapus createUserWithEmailAndPassword jika tidak diperlukan lagi
     signInWithEmailAndPassword, 
     signOut
 } from 'firebase/auth';
@@ -492,16 +492,24 @@ function AddUserModal({ isOpen, onClose, currentUserProfile }) {
         setError('');
         setSubmitting(true);
         try {
-            const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
-            const newUser = userCredential.user;
-            const userProfileData = { email: newUser.email, role: role };
-            if (role === 'operator') {
-                userProfileData.rt = rt;
-            }
-            await setDoc(doc(db, "users", newUser.uid), userProfileData);
-            await createLog(currentUserProfile.email, `Menambah user baru: ${email} (${role})`);
-            await signOut(secondaryAuth);
-            onClose();
+            // HANYA UNTUK DEBUGGING/PENGEMBANGAN AWAL!
+            // DI LINGKUNGAN PRODUKSI, JANGAN IZINKAN PEMBUATAN AKUN DARI CLIENT-SIDE
+            // JIKA AKUN HANYA DIBUAT OLEH ADMIN VIA CONSOLE FIREBASE.
+            // const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+            // const newUser = userCredential.user;
+            // const userProfileData = { email: newUser.email, role: role };
+            // if (role === 'operator') {
+            //     userProfileData.rt = rt;
+            // }
+            // await setDoc(doc(db, "users", newUser.uid), userProfileData);
+            // await createLog(currentUserProfile.email, `Menambah user baru: ${email} (${role})`);
+            // await signOut(secondaryAuth);
+            // onClose();
+
+            // Simulasi gagal karena pembuatan akun tidak diizinkan dari sini
+            setError("Pembuatan akun dari aplikasi tidak diizinkan untuk alasan keamanan.");
+            await createLog(currentUserProfile.email, `Percobaan menambah user baru (Ditolak): ${email}`);
+
         } catch (err) {
             setError(err.message.replace('Firebase: ', ''));
         } finally {
@@ -514,7 +522,7 @@ function AddUserModal({ isOpen, onClose, currentUserProfile }) {
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
                 <div className="flex justify-between items-center p-4 border-b">
-                    <h3 className="text-xl font-semibold">Tambah User Baru</h3>
+                    <h3 className="text-xl font-semibold">Tambah User Baru (Nonaktif)</h3>
                     <button onClick={onClose}><CloseIcon /></button>
                 </div>
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
@@ -528,7 +536,7 @@ function AddUserModal({ isOpen, onClose, currentUserProfile }) {
                     <div className="flex justify-end pt-4 border-t">
                         <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg mr-2">Batal</button>
                         <button type="submit" disabled={submitting} className="bg-blue-500 text-white px-4 py-2 rounded-lg disabled:bg-blue-300">
-                            {submitting ? 'Menyimpan...' : 'Simpan User'}
+                            {submitting ? 'Memproses...' : 'Simpan User (Nonaktif)'}
                         </button>
                     </div>
                 </form>
@@ -706,12 +714,6 @@ function KartuKeluarga({ userProfile }) {
                         </button>
                     </div>
                     {/* Render KartuKeluargaviewer dan attach ref */}
-                    {/* PENTING: Untuk memastikan HTML2Canvas menangkap seluruh konten, 
-                        pastikan div ini memiliki lebar yang cukup di browser Anda.
-                        Saya telah menetapkan minWidth: '1200px' sebagai contoh.
-                        Anda mungkin perlu menyesuaikan nilai ini di CSS jika konten masih terpotong.
-                        Misalnya, jika isi tabel KK sangat lebar.
-                    */}
                     <div ref={kkViewerRef} className="border p-4 rounded-md overflow-x-auto" style={{ minWidth: '1200px' }}>
                         <KartuKeluargaviewer dataKK={wargaDalamKK} noKK={noKK} headerData={headerData} />
                     </div>
@@ -1134,7 +1136,7 @@ function DataWarga({ userProfile }) {
                                 <td className="px-6 py-4">{warga.pendidikan}</td><td className="px-6 py-4">{warga.alamat}</td>
                                 <td className="px-6 py-4">{warga.rt}/{warga.rw}</td>
                
-                                {/* Pastikan tombol edit ada di sini, dengan flex-shrink-0 untuk mencegahnya menyusut */}
+                                {/* Tombol edit dan hapus, dengan flex-shrink-0 untuk memastikan mereka tidak menyusut */}
                                 <td className="px-6 py-4 flex items-center space-x-2 flex-shrink-0">
                                     <button onClick={() => openEditModal(warga)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full"><EditIcon /></button>
                                     <button onClick={() => confirmDelete(warga.id)} className="p-2 text-red-600 hover:bg-red-100 rounded-full"><TrashIcon /></button>
@@ -1171,7 +1173,7 @@ value={filters.rt} onChange={onFilterChange} className="w-full p-2 border rounde
                             <option value="semua">Semua RT</option>{OPSI.rt.map(rt => <option key={rt} value={rt}>{rt}</option>)}
                         </select>
                         <select name="rw" value={filters.rw} onChange={onFilterChange} className="w-full p-2 border rounded-lg bg-white focus:ring-blue-500 
-focus:border-blue-500">
+focus:border-border-blue-500">
                             <option value="semua">Semua RW</option>{OPSI.rw.map(rw => <option key={rw} value={rw}>{rw}</option>)}
                         </select>
                     </>
@@ -1204,14 +1206,13 @@ function WargaModal({ isOpen, onClose, wargaData, userProfile }) {
             alamat: '', rt: defaultRt, rw: OPSI.rw[0], statusTinggal: OPSI.statusTinggal[0], 
             kewarganegaraan: 'WNI', statusHubungan: OPSI.statusHubungan[0],
             golonganDarah: OPSI.golonganDarah[0], namaAyah: '', namaIbu: '', photoUrl: '',
-            // Menambahkan field lokasi ke WargaModal
             provinsi: localStorage.getItem('provinsi') || '', 
             kecamatan: localStorage.getItem('namaKecamatan') || '', 
             kelurahan: localStorage.getItem('namaKelurahan') || '', 
             kabupatenKota: localStorage.getItem('kabupatenKota') || '',
             kodePos: localStorage.getItem('kodePos') || '',
         };
-        // Penting: Pastikan semua nilai `undefined` di `wargaData` diubah menjadi `null` atau `''`
+        // Penting: Pastikan semua nilai `undefined` di `wargaData` diubah menjadi `''`
         // agar Firestore tidak menolak saat update.
         const cleanedWargaData = {};
         for (const key in (wargaData || {})) {
@@ -1304,10 +1305,10 @@ function WargaModal({ isOpen, onClose, wargaData, userProfile }) {
             const wargaCollectionRef = collection(db, `warga`);
             if (wargaData?.id) {
                 const docRef = doc(db, `warga`, wargaData.id);
-                await updateDoc(docRef, dataToSave); // Gunakan dataToSave yang sudah dibersihkan
+                await updateDoc(docRef, dataToSave); 
                 await createLog(userProfile.email, `Memperbarui data warga: ${formData.nama}`);
             } else {
-                await addDoc(wargaCollectionRef, dataToSave); // Gunakan dataToSave yang sudah dibersihkan
+                await addDoc(wargaCollectionRef, dataToSave); 
                 await createLog(userProfile.email, `Menambah warga baru: ${formData.nama}`);
             }
             onClose();
@@ -1464,6 +1465,12 @@ function ImportModal({ isOpen, onClose, userProfile }) {
                                 obj[fieldName] = row[index];
                             }
                         });
+                        // Pastikan semua nilai undefined diubah jadi string kosong saat parsing
+                        for (const key in obj) {
+                            if (obj[key] === undefined) {
+                                obj[key] = '';
+                            }
+                        }
                         return obj;
                     });
                     setData(parsedData);
@@ -1488,10 +1495,20 @@ function ImportModal({ isOpen, onClose, userProfile }) {
             
             data.forEach(warga => {
                 const docRef = doc(wargaCollectionRef);
-                if (userProfile.role === 'operator') {
-                    warga.rt = userProfile.rt;
+                // Pastikan semua nilai undefined diubah jadi string kosong sebelum set
+                const cleanedWarga = {};
+                for (const key in warga) {
+                    if (warga[key] === undefined) {
+                        cleanedWarga[key] = '';
+                    } else {
+                        cleanedWarga[key] = warga[key];
+                    }
                 }
-                batch.set(docRef, warga);
+
+                if (userProfile.role === 'operator') {
+                    cleanedWarga.rt = userProfile.rt;
+                }
+                batch.set(docRef, cleanedWarga);
             });
 
             await batch.commit();
@@ -1603,44 +1620,42 @@ function LoadingScreen({ text = "Memuat aplikasi..." }) {
 function LoginScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [isLogin, setIsLogin] = useState(true);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    // isLogin selalu true, opsi "Buat Akun" dihilangkan
+    const isLogin = true; 
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
         setLoading(true);
         try {
-            if (isLogin) {
-                await signInWithEmailAndPassword(mainAuth, email, password);
-            } else {
-                await createUserWithEmailAndPassword(mainAuth, email, password);
-            }
+            // Hanya izinkan login, tidak ada pembuatan akun dari sini
+            await signInWithEmailAndPassword(mainAuth, email, password);
+            // Tidak perlu ada else (createUserWithEmailAndPassword) karena fitur ini dinonaktifkan
         } catch (err) {
             setError(err.message.replace('Firebase: ', ''));
         } finally {
             setLoading(false);
         }
     };
+
     return (
         <div className="min-h-screen bg-gray-100 flex flex-col justify-center items-center p-4">
             <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-lg">
-                <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">{isLogin ? 'Login Admin' : 'Buat Akun Admin'}</h2>
+                <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">Login Admin</h2> {/* Label langsung Login Admin */}
                 <form onSubmit={handleSubmit} className="space-y-6">
                     
                     <InputField label="Email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                     <InputField label="Password" name="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                     {error && <p className="text-red-500 text-sm bg-red-100 p-3 rounded-lg">{error}</p>}
                     <button type="submit" disabled={loading} className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors disabled:bg-blue-300">
-    
-                        {loading ? 'Memproses...' : (isLogin ? 'Login' : 'Buat Akun')}
+                        {loading ? 'Memproses...' : 'Login'} {/* Tombol hanya untuk Login */}
                     </button>
                 </form>
+                {/* Bagian untuk beralih ke "Buat Akun" dihilangkan */}
                 <p className="text-center text-sm text-gray-600 mt-6">
-                    {isLogin ? "Belum punya akun?" : "Sudah punya akun?"}
-                    <button onClick={() => { setIsLogin(!isLogin); setError(''); }} className="font-semibold text-blue-500 hover:underline ml-1">
-                        {isLogin ? 'Buat Akun' : 'Login'}
-                    </button>
+                   Hubungi Administrator untuk pembuatan akun.
                 </p>
             </div>
         </div>
