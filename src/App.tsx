@@ -93,9 +93,13 @@ const OPSI = {
         "Kramat Jati": ["Balekambang", "Batu Ampar", "Cawang", "Cililitan", "Dukuh", "Kramat Jati", "Tengah"],
         "Makasar": ["Cipinang Melayu", "Halim Perdana Kusuma", "Kebon Pala", "Makasar", "Pinang Ranti"]
     },
-    get daftarKecamatan() { return Object.keys(this.kecamatan); }, 
-    get daftarKelurahan() { 
-        return Object.values(this.kecamatan).flat();
+    get daftarKecamatan() { 
+        // Mengembalikan daftar kecamatan yang unik dari objek kecamatan
+        return Object.keys(this.kecamatan).sort(); 
+    }, 
+    getDaftarKelurahan(kecamatanNama) { 
+        // Mengembalikan kelurahan berdasarkan kecamatan yang dipilih
+        return this.kecamatan[kecamatanNama] ? this.kecamatan[kecamatanNama].sort() : [];
     }
 };
 
@@ -316,6 +320,7 @@ function Pengaturan() {
                             }} 
                             options={['Pilih Provinsi', ...OPSI.provinsi]}
                         />
+                        {/* Menampilkan daftar kecamatan berdasarkan provinsi yang dipilih */}
                         <SelectField 
                             label="Nama Kecamatan" 
                             name="namaKecamatan" 
@@ -324,17 +329,19 @@ function Pengaturan() {
                                 setNamaKecamatan(e.target.value);
                                 setNamaKelurahan(''); // Reset kelurahan ketika kecamatan berubah
                             }} 
-                            options={['Pilih Kecamatan', ...(OPSI.kecamatan[provinsi] ? OPSI.daftarKecamatan : [])]} // Filter daftarKecamatan berdasarkan provinsi
+                            options={['Pilih Kecamatan', ...OPSI.daftarKecamatan]} // daftarKecamatan diambil dari OPSI
                             disabled={!provinsi || provinsi === 'Pilih Provinsi'}
                         />
+                         {/* Menampilkan daftar kelurahan berdasarkan kecamatan yang dipilih */}
                          <SelectField 
                             label="Nama Kelurahan / Desa" 
                             name="namaKelurahan" 
                             value={namaKelurahan} 
                             onChange={(e) => setNamaKelurahan(e.target.value)} 
-                            options={['Pilih Kelurahan', ...(namaKecamatan && OPSI.kecamatan[namaKecamatan] ? OPSI.kecamatan[namaKecamatan] : [])]}
+                            options={['Pilih Kelurahan', ...OPSI.getDaftarKelurahan(namaKecamatan)]} // getDaftarKelurahan(namaKecamatan)
                             disabled={!namaKecamatan || namaKecamatan === 'Pilih Kecamatan'}
                         />
+                        {/* Input Field biasa untuk Kabupaten/Kota dan Kode Pos */}
                         <InputField label="Kabupaten/Kota" name="kabupatenKota" value={kabupatenKota} onChange={(e) => setKabupatenKota(e.target.value)} placeholder="Contoh: Kota Bekasi" />
                         <InputField label="Kode Pos" name="kodePos" value={kodePos} onChange={(e) => setKodePos(e.target.value)} placeholder="Contoh: 12345" />
                         <InputField label="Alamat" name="alamatKelurahan" value={alamatKelurahan} onChange={(e) => setAlamatKelurahan(e.target.value)} placeholder="Contoh: Jl. Raya Sejahtera No. 1" />
@@ -553,6 +560,8 @@ function KartuKeluarga({ userProfile }) {
         kabupatenKota: localStorage.getItem('kabupatenKota') || 'Kabupaten/Kota Tidak Diketahui',
         provinsi: localStorage.getItem('provinsi') || 'Provinsi Tidak Diketahui',
         kodePos: localStorage.getItem('kodePos') || 'Kode Pos Tidak Diketahui',
+        // Tanggal ditertibkan
+        ditertibkanTanggal: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
     };
 
     const handleSearchKK = async (e) => {
@@ -569,15 +578,13 @@ function KartuKeluarga({ userProfile }) {
 
         try {
             const wargaCollectionRef = collection(db, 'warga');
-            // Query untuk mencari warga dengan nomor KK yang cocok
             const q = query(wargaCollectionRef, where("kk", "==", noKK));
-            const querySnapshot = await getDocs(q); // Gunakan getDocs untuk mendapatkan data saat ini
+            const querySnapshot = await getDocs(q); 
 
             if (querySnapshot.empty) {
                 setError(`Tidak ditemukan data warga untuk No. KK: ${noKK}`);
             } else {
                 const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // Urutkan anggota keluarga agar Kepala Keluarga muncul pertama
                 data.sort((a, b) => {
                     if (a.statusHubungan === "Kepala Keluarga") return -1;
                     if (b.statusHubungan === "Kepala Keluarga") return 1;
@@ -601,16 +608,33 @@ function KartuKeluarga({ userProfile }) {
         }
         
         if (kkViewerRef.current) {
-            // Menggunakan html2canvas untuk menangkap tampilan KK sebagai gambar
-            const canvas = await html2canvas(kkViewerRef.current, { scale: 2 }); // Scale untuk kualitas lebih baik
-            const imgData = canvas.toDataURL('image/jpeg', 1.0); // Kualitas 1.0
+            const canvas = await html2canvas(kkViewerRef.current, {
+                scale: 2, // Skala untuk kualitas lebih baik
+                useCORS: true, // Penting jika ada gambar dari domain lain (misal Cloudinary)
+                allowTaint: true // Izinkan taint jika ada elemen dari domain berbeda
+            }); 
+            const imgData = canvas.toDataURL('image/jpeg', 1.0); 
 
-            const pdf = new jsPDF('landscape', 'mm', 'a4'); // Buat PDF A4 lanskap
-            const imgWidth = pdf.internal.pageSize.getWidth() - 20; // Lebar gambar di PDF (sesuai lebar kertas dikurangi margin)
-            const imgHeight = (canvas.height * imgWidth) / canvas.width; // Hitung tinggi proporsional
+            const pdf = new jsPDF('landscape', 'mm', 'a4'); // Set ke 'landscape' untuk mode horizontal
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            const imgWidth = pdfWidth - 20; // Margin 10mm di kiri dan kanan
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-            // Tambahkan gambar ke PDF
-            pdf.addImage(imgData, 'JPEG', 10, 10, imgWidth, imgHeight); // Posisi (x, y, width, height)
+            let position = 10; // Posisi awal y
+
+            // Jika tinggi gambar melebihi tinggi halaman PDF, sesuaikan atau tambahkan halaman baru
+            if (imgHeight > pdfHeight - 20) { // Jika gambar terlalu tinggi untuk satu halaman dengan margin
+                // Anda bisa memecah gambar menjadi beberapa halaman jika perlu
+                // Untuk kesederhanaan, kita akan sesuaikan agar pas di satu halaman, mungkin dengan skala lebih kecil
+                const ratio = (pdfHeight - 20) / imgHeight;
+                const newImgWidth = imgWidth * ratio;
+                const newImgHeight = imgHeight * ratio;
+                pdf.addImage(imgData, 'JPEG', (pdfWidth - newImgWidth) / 2, 10, newImgWidth, newImgHeight);
+            } else {
+                pdf.addImage(imgData, 'JPEG', (pdfWidth - imgWidth) / 2, 10, imgWidth, imgHeight);
+            }
+            
             pdf.save(`Kartu_Keluarga_${noKK}.pdf`);
             await createLog(userProfile.email, `Mengunduh PDF Kartu Keluarga No. KK: ${noKK}`);
         } else {
@@ -625,7 +649,11 @@ function KartuKeluarga({ userProfile }) {
         }
 
         if (kkViewerRef.current) {
-            const canvas = await html2canvas(kkViewerRef.current, { scale: 2 });
+            const canvas = await html2canvas(kkViewerRef.current, {
+                scale: 2, 
+                useCORS: true, 
+                allowTaint: true
+            });
             const imgData = canvas.toDataURL('image/jpeg', 1.0);
 
             const link = document.createElement('a');
@@ -636,7 +664,7 @@ function KartuKeluarga({ userProfile }) {
             document.body.removeChild(link);
             await createLog(userProfile.email, `Mengunduh JPG Kartu Keluarga No. KK: ${noKK}`);
         } else {
-            setError("Elemen Kartu Keluarga tidak ditemukan untuk diunduh.");
+                setError("Elemen Kartu Keluarga tidak ditemukan untuk diunduh.");
         }
     };
 
@@ -673,7 +701,7 @@ function KartuKeluarga({ userProfile }) {
                             <span>Unduh PDF</span>
                         </button>
                         <button onClick={downloadJPG} className="flex items-center space-x-2 bg-purple-600 text-white px-3 py-2 text-sm rounded-lg shadow hover:bg-purple-700 transition-colors">
-                            <ExportIcon /> {/* Menggunakan ExportIcon sebagai placeholder untuk JPG */}
+                            <ExportIcon /> 
                             <span>Unduh JPG</span>
                         </button>
                     </div>
@@ -994,7 +1022,7 @@ function DataWarga({ userProfile }) {
                 warga.pekerjaan || '',
                 warga.statusPernikahan || '',
                 warga.statusHubungan || '',
-                waga.golonganDarah || '',
+                warga.golonganDarah || '',
                 warga.namaAyah || '',
                 warga.namaIbu || '',
                 warga.alamat || '',
