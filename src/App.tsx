@@ -36,7 +36,6 @@ import html2canvas from 'html2canvas';
 import KartuKeluargaviewer from './KartuKeluargaviewer'; 
 
 // --- IKON (SVG) ---
-// Perhatian: Pastikan tidak ada spasi ekstra atau karakter tak terlihat di sini
 const UserIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>;
 const HomeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>;
 const DatabaseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>;
@@ -84,7 +83,7 @@ const OPSI = {
     statusHubungan: ["Kepala Keluarga", "Istri", "Anak", "Famili Lain", "Lainnya"],
     golonganDarah: ["A", "B", "AB", "O", "Tidak Tahu"],
     // New fields: Provinsi, Kecamatan, Kelurahan
-    provinsi: ["DKI Jakarta", "Jawa Barat"], 
+    provinsi: ["DKI Jakarta"], // Hanya Jakarta Timur untuk contoh ini ada di DKI Jakarta
     kecamatan: { 
         "Cipayung": ["Bambu Apus", "Ceger", "Cilangkap", "Lubang Buaya", "Munjul", "Pondok Ranggon", "Cipayung", "Setu"],
         "Ciracas": ["Cibubur", "Ciracas", "Kelapa Dua Wetan", "Rambutan", "Susukan"],
@@ -94,11 +93,9 @@ const OPSI = {
         "Makasar": ["Cipinang Melayu", "Halim Perdana Kusuma", "Kebon Pala", "Makasar", "Pinang Ranti"]
     },
     get daftarKecamatan() { 
-        // Mengembalikan daftar kecamatan yang unik dari objek kecamatan
         return Object.keys(this.kecamatan).sort(); 
     }, 
     getDaftarKelurahan(kecamatanNama) { 
-        // Mengembalikan kelurahan berdasarkan kecamatan yang dipilih
         return this.kecamatan[kecamatanNama] ? this.kecamatan[kecamatanNama].sort() : [];
     }
 };
@@ -320,7 +317,6 @@ function Pengaturan() {
                             }} 
                             options={['Pilih Provinsi', ...OPSI.provinsi]}
                         />
-                        {/* Menampilkan daftar kecamatan berdasarkan provinsi yang dipilih */}
                         <SelectField 
                             label="Nama Kecamatan" 
                             name="namaKecamatan" 
@@ -329,19 +325,17 @@ function Pengaturan() {
                                 setNamaKecamatan(e.target.value);
                                 setNamaKelurahan(''); // Reset kelurahan ketika kecamatan berubah
                             }} 
-                            options={['Pilih Kecamatan', ...OPSI.daftarKecamatan]} // daftarKecamatan diambil dari OPSI
+                            options={['Pilih Kecamatan', ...OPSI.daftarKecamatan]}
                             disabled={!provinsi || provinsi === 'Pilih Provinsi'}
                         />
-                         {/* Menampilkan daftar kelurahan berdasarkan kecamatan yang dipilih */}
                          <SelectField 
                             label="Nama Kelurahan / Desa" 
                             name="namaKelurahan" 
                             value={namaKelurahan} 
                             onChange={(e) => setNamaKelurahan(e.target.value)} 
-                            options={['Pilih Kelurahan', ...OPSI.getDaftarKelurahan(namaKecamatan)]} // getDaftarKelurahan(namaKecamatan)
+                            options={['Pilih Kelurahan', ...OPSI.getDaftarKelurahan(namaKecamatan)]}
                             disabled={!namaKecamatan || namaKecamatan === 'Pilih Kecamatan'}
                         />
-                        {/* Input Field biasa untuk Kabupaten/Kota dan Kode Pos */}
                         <InputField label="Kabupaten/Kota" name="kabupatenKota" value={kabupatenKota} onChange={(e) => setKabupatenKota(e.target.value)} placeholder="Contoh: Kota Bekasi" />
                         <InputField label="Kode Pos" name="kodePos" value={kodePos} onChange={(e) => setKodePos(e.target.value)} placeholder="Contoh: 12345" />
                         <InputField label="Alamat" name="alamatKelurahan" value={alamatKelurahan} onChange={(e) => setAlamatKelurahan(e.target.value)} placeholder="Contoh: Jl. Raya Sejahtera No. 1" />
@@ -560,7 +554,6 @@ function KartuKeluarga({ userProfile }) {
         kabupatenKota: localStorage.getItem('kabupatenKota') || 'Kabupaten/Kota Tidak Diketahui',
         provinsi: localStorage.getItem('provinsi') || 'Provinsi Tidak Diketahui',
         kodePos: localStorage.getItem('kodePos') || 'Kode Pos Tidak Diketahui',
-        // Tanggal ditertibkan
         ditertibkanTanggal: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
     };
 
@@ -568,7 +561,7 @@ function KartuKeluarga({ userProfile }) {
         e.preventDefault();
         setLoading(true);
         setError('');
-        setWargaDalamKK([]); // Reset data sebelumnya
+        setWargaDalamKK([]); 
 
         if (!noKK) {
             setError("Nomor KK tidak boleh kosong.");
@@ -603,37 +596,47 @@ function KartuKeluarga({ userProfile }) {
 
     const downloadPDF = async () => {
         if (wargaDalamKK.length === 0) {
-            setError("Tidak ada data Kartu Keluarga untuk diunduh.");
+            setInfoModalMessage("Tidak ada data Kartu Keluarga untuk diunduh.");
             return;
         }
         
         if (kkViewerRef.current) {
+            // Penting: Pastikan lebar kontainer KK di browser cukup untuk konten penuh
+            // agar html2canvas tidak memotongnya. Anda mungkin perlu scroll ke kanan
+            // di browser sebelum mengklik unduh jika konten sangat lebar.
             const canvas = await html2canvas(kkViewerRef.current, {
-                scale: 2, // Skala untuk kualitas lebih baik
-                useCORS: true, // Penting jika ada gambar dari domain lain (misal Cloudinary)
-                allowTaint: true // Izinkan taint jika ada elemen dari domain berbeda
+                scale: 2, 
+                useCORS: true, 
+                allowTaint: true,
+                // Pastikan seluruh elemen terlihat di viewport agar tidak terpotong
+                windowWidth: kkViewerRef.current.scrollWidth,
+                windowHeight: kkViewerRef.current.scrollHeight,
             }); 
             const imgData = canvas.toDataURL('image/jpeg', 1.0); 
 
             const pdf = new jsPDF('landscape', 'mm', 'a4'); // Set ke 'landscape' untuk mode horizontal
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = pdf.internal.pageSize.getHeight();
-            const imgWidth = pdfWidth - 20; // Margin 10mm di kiri dan kanan
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            const pdfWidth = pdf.internal.pageSize.getWidth(); // 297 mm untuk A4 lanskap
+            const pdfHeight = pdf.internal.pageSize.getHeight(); // 210 mm untuk A4 lanskap
 
-            let position = 10; // Posisi awal y
+            const imgCanvasWidth = canvas.width;
+            const imgCanvasHeight = canvas.height;
 
-            // Jika tinggi gambar melebihi tinggi halaman PDF, sesuaikan atau tambahkan halaman baru
-            if (imgHeight > pdfHeight - 20) { // Jika gambar terlalu tinggi untuk satu halaman dengan margin
-                // Anda bisa memecah gambar menjadi beberapa halaman jika perlu
-                // Untuk kesederhanaan, kita akan sesuaikan agar pas di satu halaman, mungkin dengan skala lebih kecil
-                const ratio = (pdfHeight - 20) / imgHeight;
-                const newImgWidth = imgWidth * ratio;
-                const newImgHeight = imgHeight * ratio;
-                pdf.addImage(imgData, 'JPEG', (pdfWidth - newImgWidth) / 2, 10, newImgWidth, newImgHeight);
-            } else {
-                pdf.addImage(imgData, 'JPEG', (pdfWidth - imgWidth) / 2, 10, imgWidth, imgHeight);
+            const aspectRatio = imgCanvasWidth / imgCanvasHeight;
+
+            let imgPdfWidth = pdfWidth - 20; // 10mm margin kiri dan kanan
+            let imgPdfHeight = imgPdfWidth / aspectRatio;
+
+            // Jika tinggi hasil resize masih melebihi tinggi PDF, sesuaikan lagi
+            if (imgPdfHeight > pdfHeight - 20) { // 10mm margin atas dan bawah
+                imgPdfHeight = pdfHeight - 20;
+                imgPdfWidth = imgPdfHeight * aspectRatio;
             }
+
+            // Posisikan gambar di tengah halaman
+            const x = (pdfWidth - imgPdfWidth) / 2;
+            const y = (pdfHeight - imgPdfHeight) / 2;
+            
+            pdf.addImage(imgData, 'JPEG', x, y, imgPdfWidth, imgPdfHeight);
             
             pdf.save(`Kartu_Keluarga_${noKK}.pdf`);
             await createLog(userProfile.email, `Mengunduh PDF Kartu Keluarga No. KK: ${noKK}`);
@@ -652,7 +655,9 @@ function KartuKeluarga({ userProfile }) {
             const canvas = await html2canvas(kkViewerRef.current, {
                 scale: 2, 
                 useCORS: true, 
-                allowTaint: true
+                allowTaint: true,
+                windowWidth: kkViewerRef.current.scrollWidth,
+                windowHeight: kkViewerRef.current.scrollHeight,
             });
             const imgData = canvas.toDataURL('image/jpeg', 1.0);
 
@@ -706,7 +711,13 @@ function KartuKeluarga({ userProfile }) {
                         </button>
                     </div>
                     {/* Render KartuKeluargaviewer dan attach ref */}
-                    <div ref={kkViewerRef} className="border p-4 rounded-md overflow-x-auto">
+                    {/* PENTING: Untuk memastikan HTML2Canvas menangkap seluruh konten, 
+                        pastikan div ini memiliki lebar yang cukup di browser Anda.
+                        Anda mungkin perlu memaksa lebar min-width yang sangat besar jika kontennya lebar.
+                        Contoh: style={{ minWidth: '1200px' }} di div di bawah.
+                        Dan pastikan tidak ada overflow: hidden; pada parent container yang membatasi.
+                    */}
+                    <div ref={kkViewerRef} className="border p-4 rounded-md overflow-x-auto" style={{ minWidth: '1200px' }}>
                         <KartuKeluargaviewer dataKK={wargaDalamKK} noKK={noKK} headerData={headerData} />
                     </div>
                 </div>
@@ -1189,7 +1200,13 @@ function WargaModal({ isOpen, onClose, wargaData, userProfile }) {
             agama: OPSI.agama[0], pekerjaan: '', pendidikan: OPSI.pendidikan[0],
             alamat: '', rt: defaultRt, rw: OPSI.rw[0], statusTinggal: OPSI.statusTinggal[0], 
             kewarganegaraan: 'WNI', statusHubungan: OPSI.statusHubungan[0],
-            golonganDarah: OPSI.golonganDarah[0], namaAyah: '', namaIbu: '', photoUrl: '' 
+            golonganDarah: OPSI.golonganDarah[0], namaAyah: '', namaIbu: '', photoUrl: '',
+            // Menambahkan field lokasi ke WargaModal
+            provinsi: localStorage.getItem('provinsi') || '',
+            kecamatan: localStorage.getItem('namaKecamatan') || '',
+            kelurahan: localStorage.getItem('namaKelurahan') || '', // Menggunakan "kelurahan" sebagai field
+            kabupatenKota: localStorage.getItem('kabupatenKota') || '',
+            kodePos: localStorage.getItem('kodePos') || '',
         };
         setFormData(wargaData || initialData);
         if (wargaData?.photoUrl) {
@@ -1313,6 +1330,33 @@ function WargaModal({ isOpen, onClose, wargaData, userProfile }) {
                         <SelectField label="Status Tempat Tinggal" name="statusTinggal" value={formData.statusTinggal} onChange={handleChange} options={OPSI.statusTinggal} />
                         <InputField label="Kewarganegaraan" name="kewarganegaraan" value={formData.kewarganegaraan} onChange={handleChange} />
                         
+                        {/* Menambahkan field lokasi ke WargaModal */}
+                        <SelectField 
+                            label="Provinsi" 
+                            name="provinsi" 
+                            value={formData.provinsi} 
+                            onChange={handleChange} 
+                            options={['', ...OPSI.provinsi]} 
+                        />
+                        <SelectField 
+                            label="Kecamatan" 
+                            name="kecamatan" 
+                            value={formData.kecamatan} 
+                            onChange={handleChange} 
+                            options={['', ...OPSI.daftarKecamatan]} 
+                            disabled={!formData.provinsi}
+                        />
+                        <SelectField 
+                            label="Kelurahan" 
+                            name="kelurahan" 
+                            value={formData.kelurahan} 
+                            onChange={handleChange} 
+                            options={['', ...OPSI.getDaftarKelurahan(formData.kecamatan)]} 
+                            disabled={!formData.kecamatan}
+                        />
+                        <InputField label="Kabupaten/Kota" name="kabupatenKota" value={formData.kabupatenKota} onChange={handleChange} />
+                        <InputField label="Kode Pos" name="kodePos" value={formData.kodePos} onChange={handleChange} />
+
                         {/* New Photo Upload Field */}
                         <div className="md:col-span-2">
                             <InputField 
@@ -1386,6 +1430,11 @@ function ImportModal({ isOpen, onClose, userProfile }) {
                         'Status Tinggal': 'statusTinggal',
                         'Kewarganegaraan': 'kewarganegaraan',
                         'URL Foto': 'photoUrl', 
+                        'Provinsi': 'provinsi', // Menambahkan ke headerMap
+                        'Kecamatan': 'kecamatan', // Menambahkan ke headerMap
+                        'Kelurahan': 'kelurahan', // Menambahkan ke headerMap
+                        'Kabupaten/Kota': 'kabupatenKota', // Menambahkan ke headerMap
+                        'Kode Pos': 'kodePos', // Menambahkan ke headerMap
                     };
                     const parsedData = jsonData.slice(1).map(row => {
                         let obj = {};
@@ -1446,7 +1495,7 @@ function ImportModal({ isOpen, onClose, userProfile }) {
                 <div className="p-6 space-y-4">
                     <div className="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 rounded">
                         <p className="font-bold">Petunjuk</p>
-                        <p className="text-sm">Pastikan file Excel Anda memiliki kolom header berikut di baris pertama: <br/> <code className="text-xs">Nama Lengkap, NIK, No KK, Tempat Lahir, Tanggal Lahir, Tanggal Perkawinan, Jenis Kelamin, Agama, Pendidikan, Pekerjaan, Status Pernikahan, Status Hubungan Keluarga, Golongan Darah, Nama Ayah, Nama Ibu, Alamat, RT, RW, Status Tinggal, Kewarganegaraan, URL Foto</code></p>
+                        <p className="text-sm">Pastikan file Excel Anda memiliki kolom header berikut di baris pertama: <br/> <code className="text-xs">Nama Lengkap, NIK, No KK, Tempat Lahir, Tanggal Lahir, Tanggal Perkawinan, Jenis Kelamin, Agama, Pendidikan, Pekerjaan, Status Pernikahan, Status Hubungan Keluarga, Golongan Darah, Nama Ayah, Nama Ibu, Alamat, RT, RW, Status Tinggal, Kewarganegaraan, URL Foto, Provinsi, Kecamatan, Kelurahan, Kabupaten/Kota, Kode Pos</code></p>
                     </div>
                     <InputField type="file" label="Pilih File Excel (.xlsx)" name="file" onChange={handleFileChange} accept=".xlsx, .xls" />
                     {error && <p className="text-red-500 text-sm">{error}</p>}
