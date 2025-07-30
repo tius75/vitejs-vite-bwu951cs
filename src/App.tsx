@@ -64,7 +64,8 @@ const secondaryApp = initializeApp(firebaseConfig, "secondary");
 const secondaryAuth = getAuth(secondaryApp);
 
 
-// --- DATA KONSTAN ---
+// --- DATA KONSTAN UNTUK OPSI DROPDOWN ---
+// Anda dapat mengedit daftar ini langsung di sini jika ada perubahan
 const OPSI = {
     agama: ["Islam", "Kristen Protestan", "Kristen Katolik", "Hindu", "Buddha", "Khonghucu", "Lainnya"],
     jenisKelamin: ["Laki-laki", "Perempuan"],
@@ -76,11 +77,11 @@ const OPSI = {
     roles: ['superadmin', 'operator'],
     statusHubungan: ["Kepala Keluarga", "Istri", "Anak", "Famili Lain", "Lainnya"],
     golonganDarah: ["A", "B", "AB", "O", "Tidak Tahu"],
-    // Contoh data untuk opsi wilayah, bisa disesuaikan atau diambil dari API
-    kecamatan: ["Cikarang Barat", "Cikarang Utara", "Tambun Selatan"], 
-    kelurahan: ["Jatimulya", "Margahayu", "Duren Jaya"],
-    kabupatenKota: ["Kabupaten Bekasi", "Kota Bekasi", "Kabupaten Karawang"], 
-    provinsi: ["Jawa Barat", "DKI Jakarta", "Banten"], 
+    // Opsi Lokasi
+    kelurahan: ["Jatimulya", "Margahayu", "Duren Jaya", "Mustika Jaya", "Pengasinan", "Sepanjang Jaya"],
+    kecamatan: ["Cikarang Barat", "Cikarang Utara", "Tambun Selatan", "Bekasi Timur", "Bantargebang"], 
+    kabupatenKota: ["Kabupaten Bekasi", "Kota Bekasi", "Kabupaten Karawang", "Kota Bandung", "Kabupaten Bogor"], 
+    provinsi: ["Jawa Barat", "DKI Jakarta", "Banten", "Jawa Tengah", "Jawa Timur"], 
 };
 
 // --- FUNGSI BANTU ---
@@ -630,7 +631,8 @@ function DataWarga({ userProfile }) {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [deletingId, setDeletingId] = useState(null);
     const [filters, setFilters] = useState({
-        nama: '', nik: '', kk: '', jenisKelamin: 'semua', statusPernikahan: 'semua', rt: 'semua', rw: 'semua'
+        nama: '', nik: '', kk: '', jenisKelamin: 'semua', statusPernikahan: 'semua', rt: 'semua', rw: 'semua',
+        kelurahan: 'semua', kecamatan: 'semua', kabupatenKota: 'semua', provinsi: 'semua', // Filter tambahan
     });
     useEffect(() => {
         if (!userProfile) return;
@@ -656,6 +658,10 @@ function DataWarga({ userProfile }) {
         if (userProfile.role === 'superadmin') {
             if (filters.rt !== 'semua') data = data.filter(w => w.rt === filters.rt);
             if (filters.rw !== 'semua') data = data.filter(w => w.rw === filters.rw);
+            if (filters.kelurahan !== 'semua') data = data.filter(w => w.kelurahan === filters.kelurahan); // Filter kelurahan
+            if (filters.kecamatan !== 'semua') data = data.filter(w => w.kecamatan === filters.kecamatan); // Filter kecamatan
+            if (filters.kabupatenKota !== 'semua') data = data.filter(w => w.kabupatenKota === filters.kabupatenKota); // Filter kabupaten/kota
+            if (filters.provinsi !== 'semua') data = data.filter(w => w.provinsi === filters.provinsi); // Filter provinsi
         }
         setFilteredWarga(data);
     }, [filters, wargaList, userProfile]);
@@ -715,14 +721,14 @@ function DataWarga({ userProfile }) {
             'Alamat': w.alamat, 
             'RT': w.rt, 
             'RW': w.rw,
-            'Kelurahan': w.kelurahan, // Tambah kolom kelurahan
-            'Kecamatan': w.kecamatan, // Tambah kolom kecamatan
-            'Kabupaten/Kota': w.kabupatenKota, // Tambah kolom kabupaten/kota
-            'Provinsi': w.provinsi, // Tambah kolom provinsi
-            'Kode Pos': w.kodePos, // Tambah kolom kode pos
+            'Kelurahan': w.kelurahan, 
+            'Kecamatan': w.kecamatan, 
+            'Kabupaten/Kota': w.kabupatenKota, 
+            'Provinsi': w.provinsi, 
+            'Kode Pos': w.kodePos, 
             'Status Tinggal': w.statusTinggal,
             'Kewarganegaraan': w.kewarganegaraan,
-            'URL Foto': w.photoURL || '', // Tambah URL Foto
+            'URL Foto': w.photoURL || '', 
         }));
         const worksheet = XLSX.utils.json_to_sheet(dataToExport);
         const workbook = XLSX.utils.book_new();
@@ -738,10 +744,10 @@ function DataWarga({ userProfile }) {
         }
         
         // Dapatkan data pengaturan dari localStorage
-        const namaKelurahan = localStorage.getItem('namaKelurahan') || 'Kelurahan Anda';
-        const namaKecamatan = localStorage.getItem('namaKecamatan') || 'Kecamatan Anda';
-        const kabupatenKota = localStorage.getItem('kabupatenKota') || 'Kabupaten/Kota Anda';
-        const provinsi = localStorage.getItem('provinsi') || 'Provinsi Anda';
+        const namaKelurahanSetting = localStorage.getItem('namaKelurahan') || 'Kelurahan Anda';
+        const namaKecamatanSetting = localStorage.getItem('namaKecamatan') || 'Kecamatan Anda';
+        const kabupatenKotaSetting = localStorage.getItem('kabupatenKota') || 'Kabupaten/Kota Anda';
+        const provinsiSetting = localStorage.getItem('provinsi') || 'Provinsi Anda';
 
         // Hanya ambil data warga pertama untuk simulasi kartu KTP
         const wargaToShare = filteredWarga[0]; 
@@ -752,8 +758,8 @@ function DataWarga({ userProfile }) {
 
         let cardText = `
 *--- KARTU TANDA PENDUDUK ---*
-🇮🇩 _${provinsi.toUpperCase()}_
-🏛️ _${kabupatenKota.toUpperCase()}_
+🇮🇩 _${provinsiSetting.toUpperCase()}_
+🏛️ _${kabupatenKotaSetting.toUpperCase()}_
 ➖➖➖➖➖➖➖➖➖➖➖➖
 *NIK* : ${wargaToShare.nik || '-'}
 *Nama* : ${wargaToShare.nama || '-'}
@@ -762,8 +768,8 @@ function DataWarga({ userProfile }) {
 *Gol. Darah* : ${wargaToShare.golonganDarah || '-'}
 *Alamat* : ${wargaToShare.alamat || '-'}
   *RT/RW* : ${wargaToShare.rt || '-'}/${wargaToShare.rw || '-'}
-  *Kel/Desa* : ${wargaToShare.kelurahan || namaKelurahan}
-  *Kecamatan* : ${wargaToShare.kecamatan || namaKecamatan}
+  *Kel/Desa* : ${wargaToShare.kelurahan || namaKelurahanSetting}
+  *Kecamatan* : ${wargaToShare.kecamatan || namaKecamatanSetting}
 *Agama* : ${wargaToShare.agama || '-'}
 *Status Perkawinan* : ${wargaToShare.statusPernikahan || '-'}
 *Tgl. Perkawinan* : ${tglKawinFormatted}
@@ -795,21 +801,21 @@ ${wargaToShare.photoURL ? `\n*URL Foto*: ${wargaToShare.photoURL}` : ''}
         const doc = new jsPDF('landscape'); // Gunakan landscape untuk tabel yang lebih lebar
 
         // Dapatkan data pengaturan dari localStorage
-        const namaKelurahan = localStorage.getItem('namaKelurahan') || 'Kelurahan Anda';
-        const alamatKelurahan = localStorage.getItem('alamatKelurahan') || 'Alamat kelurahan belum diatur';
-        const namaKecamatan = localStorage.getItem('namaKecamatan') || 'Kecamatan Anda';
-        const kabupatenKota = localStorage.getItem('kabupatenKota') || 'Kabupaten/Kota Anda';
-        const provinsi = localStorage.getItem('provinsi') || 'Provinsi Anda';
-        const kodePos = localStorage.getItem('kodePos') || '';
+        const namaKelurahanSetting = localStorage.getItem('namaKelurahan') || 'Kelurahan Anda';
+        const alamatKelurahanSetting = localStorage.getItem('alamatKelurahan') || 'Alamat kelurahan belum diatur';
+        const namaKecamatanSetting = localStorage.getItem('namaKecamatan') || 'Kecamatan Anda';
+        const kabupatenKotaSetting = localStorage.getItem('kabupatenKota') || 'Kabupaten/Kota Anda';
+        const provinsiSetting = localStorage.getItem('provinsi') || 'Provinsi Anda';
+        const kodePosSetting = localStorage.getItem('kodePos') || '';
 
         // Header Laporan
         doc.setFontSize(16);
         doc.text("LAPORAN DATA PENDUDUK", doc.internal.pageSize.width / 2, 10, { align: 'center' });
         doc.setFontSize(12);
-        doc.text(`${namaKelurahan.toUpperCase()}`, doc.internal.pageSize.width / 2, 17, { align: 'center' });
+        doc.text(`${namaKelurahanSetting.toUpperCase()}`, doc.internal.pageSize.width / 2, 17, { align: 'center' });
         doc.setFontSize(10);
-        doc.text(`${alamatKelurahan}, KEC. ${namaKecamatan.toUpperCase()}, ${kabupatenKota.toUpperCase()}`, doc.internal.pageSize.width / 2, 22, { align: 'center' });
-        doc.text(`${provinsi.toUpperCase()} ${kodePos ? `, KODE POS ${kodePos}` : ''}`, doc.internal.pageSize.width / 2, 27, { align: 'center' });
+        doc.text(`${alamatKelurahanSetting}, KEC. ${namaKecamatanSetting.toUpperCase()}, ${kabupatenKotaSetting.toUpperCase()}`, doc.internal.pageSize.width / 2, 22, { align: 'center' });
+        doc.text(`${provinsiSetting.toUpperCase()} ${kodePosSetting ? `, KODE POS ${kodePosSetting}` : ''}`, doc.internal.pageSize.width / 2, 27, { align: 'center' });
         
         doc.setFontSize(10);
         doc.text(`Total Warga: ${filteredWarga.length}`, 14, 35);
@@ -818,13 +824,12 @@ ${wargaToShare.photoURL ? `\n*URL Foto*: ${wargaToShare.photoURL}` : ''}
             "No", "Nama", "NIK", "KK", "Tpt/Tgl Lahir", "Tgl Kawin", "JK", 
             "Agama", "Pend", "Kerja", "Sts Nikah", "Sts Hub", 
             "Gol Darah", "Ayah", "Ibu", "Alamat", "RT/RW", "Kel", "Kec", 
-            "Kab/Kota", "Prov", "Pos", "Sts Tinggal", "WNA", "Foto" // Kolom baru untuk foto
+            "Kab/Kota", "Prov", "Pos", "Sts Tinggal", "WNA", "Foto"
         ];
 
         const tableRows = [];
 
         for (const warga of filteredWarga) {
-            // Ambil gambar dan konversi ke base64 jika ada
             let imageData = '';
             if (warga.photoURL) {
                 try {
@@ -837,7 +842,7 @@ ${wargaToShare.photoURL ? `\n*URL Foto*: ${wargaToShare.photoURL}` : ''}
                     });
                 } catch (error) {
                     console.error("Error loading image for PDF:", error);
-                    imageData = ''; // Reset if error
+                    imageData = '';
                 }
             }
 
@@ -866,7 +871,7 @@ ${wargaToShare.photoURL ? `\n*URL Foto*: ${wargaToShare.photoURL}` : ''}
                 warga.kodePos || '',
                 warga.statusTinggal || '',
                 warga.kewarganegaraan || '',
-                { content: '', image: imageData, styles: { cellWidth: 15, cellHeight: 15 } } // Placeholder for image
+                { content: '', image: imageData, styles: { cellWidth: 15, cellHeight: 15 } }
             ];
             tableRows.push(wargaData);
         }
@@ -874,9 +879,9 @@ ${wargaToShare.photoURL ? `\n*URL Foto*: ${wargaToShare.photoURL}` : ''}
         autoTable(doc, {
             head: [tableColumn],
             body: tableRows,
-            startY: 40, // Sesuaikan startY setelah header laporan
+            startY: 40,
             theme: 'grid',
-            styles: { fontSize: 6, cellPadding: 1, overflow: 'linebreak' }, // Ukuran font dan padding lebih kecil
+            styles: { fontSize: 6, cellPadding: 1, overflow: 'linebreak' },
             headStyles: { fillColor: [200, 200, 200], textColor: [0, 0, 0], fontStyle: 'bold' },
             columnStyles: {
                 0: { cellWidth: 8 },  // No
@@ -987,9 +992,10 @@ function FilterSection({ filters, onFilterChange, userProfile }) {
     return (
         <div className="bg-white p-4 rounded-xl shadow-md">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <InputField type="text" name="nama" placeholder="Cari Nama..." value={filters.nama} onChange={onFilterChange} />
-                <InputField type="text" name="nik" placeholder="Cari NIK..." value={filters.nik} onChange={onFilterChange} />
-                <InputField type="text" name="kk" placeholder="Cari No. KK..." value={filters.kk} onChange={onFilterChange} />
+                <input type="text" name="nama" placeholder="Cari Nama..." value={filters.nama} onChange={onFilterChange} className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                <input type="text" name="nik" placeholder="Cari NIK..." value={filters.nik} onChange={onFilterChange} className="w-full p-2 
+border rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                <input type="text" name="kk" placeholder="Cari No. KK..." value={filters.kk} onChange={onFilterChange} className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500" />
                 {userProfile.role === 'superadmin' && (
                     <>
                         <SelectField label="Filter RT" name="rt" value={filters.rt} onChange={onFilterChange} options={['semua', ...OPSI.rt]} />
@@ -998,6 +1004,11 @@ function FilterSection({ filters, onFilterChange, userProfile }) {
                 )}
                 <SelectField label="Filter Jenis Kelamin" name="jenisKelamin" value={filters.jenisKelamin} onChange={onFilterChange} options={['semua', ...OPSI.jenisKelamin]} />
                 <SelectField label="Filter Status Pernikahan" name="statusPernikahan" value={filters.statusPernikahan} onChange={onFilterChange} options={['semua', ...OPSI.statusPernikahan]} />
+                {/* Filter tambahan untuk kolom lokasi baru */}
+                <SelectField label="Filter Kelurahan" name="kelurahan" value={filters.kelurahan} onChange={onFilterChange} options={['semua', ...OPSI.kelurahan]} />
+                <SelectField label="Filter Kecamatan" name="kecamatan" value={filters.kecamatan} onChange={onFilterChange} options={['semua', ...OPSI.kecamatan]} />
+                <SelectField label="Filter Kab/Kota" name="kabupatenKota" value={filters.kabupatenKota} onChange={onFilterChange} options={['semua', ...OPSI.kabupatenKota]} />
+                <SelectField label="Filter Provinsi" name="provinsi" value={filters.provinsi} onChange={onFilterChange} options={['semua', ...OPSI.provinsi]} />
             </div>
         </div>
     );
@@ -1216,14 +1227,14 @@ function ImportModal({ isOpen, onClose, userProfile }) {
                         'Alamat': 'alamat', 
                         'RT': 'rt', 
                         'RW': 'rw',
-                        'Kelurahan': 'kelurahan', // Tambah kolom kelurahan
-                        'Kecamatan': 'kecamatan', // Tambah kolom kecamatan
-                        'Kabupaten/Kota': 'kabupatenKota', // Tambah kolom kabupaten/kota
-                        'Provinsi': 'provinsi', // Tambah kolom provinsi
-                        'Kode Pos': 'kodePos', // Tambah kolom kode pos
+                        'Kelurahan': 'kelurahan', 
+                        'Kecamatan': 'kecamatan', 
+                        'Kabupaten/Kota': 'kabupatenKota', 
+                        'Provinsi': 'provinsi', 
+                        'Kode Pos': 'kodePos', 
                         'Status Tinggal': 'statusTinggal',
                         'Kewarganegaraan': 'kewarganegaraan',
-                        'URL Foto': 'photoURL', // Tambah kolom URL Foto
+                        'URL Foto': 'photoURL', 
                     };
                     const parsedData = jsonData.slice(1).map(row => {
                         let obj = {};
