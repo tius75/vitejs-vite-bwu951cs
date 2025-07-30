@@ -76,10 +76,10 @@ const OPSI = {
     roles: ['superadmin', 'operator'],
     statusHubungan: ["Kepala Keluarga", "Istri", "Anak", "Famili Lain", "Lainnya"],
     golonganDarah: ["A", "B", "AB", "O", "Tidak Tahu"],
-    // New fields
-    kecamatan: ["Kecamatan A", "Kecamatan B", "Kecamatan C"], // Example values, populate as needed
-    kabupatenKota: ["Kabupaten X", "Kota Y", "Kabupaten Z"], // Example values
-    provinsi: ["Provinsi 1", "Provinsi 2", "Provinsi 3"], // Example values
+    // New fields (example values, populate as needed or remove if dynamically set)
+    kecamatan: ["Makmur", "Sejahtera", "Damai"], 
+    kabupatenKota: ["Bekasi", "Jakarta", "Bandung"], 
+    provinsi: ["Jawa Barat", "DKI Jakarta", "Banten"], 
 };
 
 // --- FUNGSI BANTU ---
@@ -730,15 +730,36 @@ function DataWarga({ userProfile }) {
             return;
         }
 
-        let reportText = `Laporan Data Warga (Total: ${filteredWarga.length} orang)\n\n`;
-        filteredWarga.slice(0, 20).forEach((w, index) => { // Batasi 20 data pertama untuk WhatsApp
-            reportText += `${index + 1}. ${w.nama} - NIK: ${w.nik} - RT/RW: ${w.rt}/${w.rw}\n`;
-        });
-        if (filteredWarga.length > 20) {
-            reportText += "\n...dan data lainnya.";
+        // Generate KTP-like card text for the first filtered resident
+        const wargaToShare = filteredWarga[0]; 
+        let cardText = `
+*--- KARTU TANDA PENDUDUK ---*
+➖➖➖➖➖➖➖➖➖➖➖➖
+*NIK*: ${wargaToShare.nik || '-'}
+*Nama*: ${wargaToShare.nama || '-'}
+*Tempat/Tgl Lahir*: ${wargaToShare.tempatLahir || '-'}, ${wargaToShare.tanggalLahir || '-'}
+*Jenis Kelamin*: ${wargaToShare.jenisKelamin || '-'}
+*Gol. Darah*: ${wargaToShare.golonganDarah || '-'}
+*Alamat*: ${wargaToShare.alamat || '-'}
+  *RT/RW*: ${wargaToShare.rt || '-'}/${wargaToShare.rw || '-'}
+*Agama*: ${wargaToShare.agama || '-'}
+*Status Perkawinan*: ${wargaToShare.statusPernikahan || '-'}
+*Tgl. Perkawinan*: ${wargaToShare.tanggalPerkawinan || '-'}
+*Pekerjaan*: ${wargaToShare.pekerjaan || '-'}
+*Pendidikan*: ${wargaToShare.pendidikan || '-'}
+*Status Hubungan*: ${wargaToShare.statusHubungan || '-'}
+*Nama Ayah*: ${wargaToShare.namaAyah || '-'}
+*Nama Ibu*: ${wargaToShare.namaIbu || '-'}
+*Kewarganegaraan*: ${wargaToShare.kewarganegaraan || '-'}
+➖➖➖➖➖➖➖➖➖➖➖➖
+        `;
+        
+        if (filteredWarga.length > 1) {
+            cardText += `\n*...dan ${filteredWarga.length - 1} data warga lainnya. Silakan unduh PDF untuk detail lengkap.*`;
         }
 
-        const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(reportText)}`;
+
+        const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(cardText)}`;
         window.open(whatsappUrl, '_blank');
         createLog(userProfile.email, `Membagikan laporan ${filteredWarga.length} warga via WhatsApp.`);
     };
@@ -749,16 +770,16 @@ function DataWarga({ userProfile }) {
             return;
         }
 
-        const doc = new jsPDF();
+        const doc = new jsPDF('landscape'); // Use landscape for wider tables
         doc.setFontSize(14);
         doc.text("Laporan Data Warga", 14, 16);
         doc.setFontSize(10);
         doc.text(`Total: ${filteredWarga.length} warga`, 14, 22);
         
         const tableColumn = [
-            "No", "Nama", "NIK", "No KK", "Tempat/Tgl Lahir", "Jenis Kelamin", 
-            "Agama", "Pendidikan", "Pekerjaan", "Status Nikah", "Status Hubungan", 
-            "Gol Darah", "Nama Ayah", "Nama Ibu", "Alamat", "RT/RW"
+            "No", "Nama", "NIK", "No KK", "Tpt/Tgl Lahir", "Tgl Kawin", "JK", 
+            "Agama", "Pend", "Pekerjaan", "Sts Nikah", "Sts Hubungan", 
+            "Gol Darah", "Ayah", "Ibu", "Alamat", "RT/RW", "Sts Tinggal", "Warganegara"
         ];
         const tableRows = [];
 
@@ -769,6 +790,7 @@ function DataWarga({ userProfile }) {
                 warga.nik || '',
                 warga.kk || '',
                 `${warga.tempatLahir || ''}, ${warga.tanggalLahir || ''}`,
+                warga.tanggalPerkawinan || '',
                 warga.jenisKelamin || '',
                 warga.agama || '',
                 warga.pendidikan || '',
@@ -779,7 +801,9 @@ function DataWarga({ userProfile }) {
                 warga.namaAyah || '',
                 warga.namaIbu || '',
                 warga.alamat || '',
-                `${warga.rt || ''}/${warga.rw || ''}`
+                `${warga.rt || ''}/${warga.rw || ''}`,
+                warga.statusTinggal || '',
+                warga.kewarganegaraan || ''
             ];
             tableRows.push(wargaData);
         });
@@ -788,25 +812,28 @@ function DataWarga({ userProfile }) {
             body: tableRows,
             startY: 28,
             theme: 'striped',
-            styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
+            styles: { fontSize: 6, cellPadding: 1, overflow: 'linebreak' }, // Smaller font and padding
             headStyles: { fillColor: [200, 200, 200], textColor: [0, 0, 0], fontStyle: 'bold' },
             columnStyles: {
-                0: { cellWidth: 10 }, // No
-                1: { cellWidth: 30 }, // Nama
-                2: { cellWidth: 25 }, // NIK
-                3: { cellWidth: 25 }, // No KK
+                0: { cellWidth: 8 },  // No
+                1: { cellWidth: 25 }, // Nama
+                2: { cellWidth: 20 }, // NIK
+                3: { cellWidth: 20 }, // No KK
                 4: { cellWidth: 25 }, // Tempat/Tgl Lahir
-                5: { cellWidth: 20 }, // Jenis Kelamin
-                6: { cellWidth: 20 }, // Agama
-                7: { cellWidth: 25 }, // Pendidikan
-                8: { cellWidth: 20 }, // Pekerjaan
-                9: { cellWidth: 25 }, // Status Nikah
-                10: { cellWidth: 25 }, // Status Hubungan
-                11: { cellWidth: 20 }, // Golongan Darah
-                12: { cellWidth: 25 }, // Nama Ayah
-                13: { cellWidth: 25 }, // Nama Ibu
-                14: { cellWidth: 30 }, // Alamat
-                15: { cellWidth: 15 }, // RT/RW
+                5: { cellWidth: 15 }, // Tgl Kawin
+                6: { cellWidth: 10 }, // JK
+                7: { cellWidth: 15 }, // Agama
+                8: { cellWidth: 15 }, // Pend
+                9: { cellWidth: 20 }, // Pekerjaan
+                10: { cellWidth: 15 },// Sts Nikah
+                11: { cellWidth: 15 },// Sts Hubungan
+                12: { cellWidth: 10 },// Gol Darah
+                13: { cellWidth: 20 },// Ayah
+                14: { cellWidth: 20 },// Ibu
+                15: { cellWidth: 30 },// Alamat
+                16: { cellWidth: 10 },// RT/RW
+                17: { cellWidth: 15 },// Sts Tinggal
+                18: { cellWidth: 15 },// Warganegara
             }
         });
         doc.save("laporan_warga.pdf");
@@ -874,7 +901,7 @@ function DataWarga({ userProfile }) {
             </div>
 
             {isModalOpen && <WargaModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} wargaData={editingWarga} userProfile={userProfile} />}
-            {isImportModalOpen && <ImportModal isOpen={isImportModalOpen} onClose={() => setIsImportModalFromModal(false)} userProfile={userProfile} />}
+            {isImportModalOpen && <ImportModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} userProfile={userProfile} />}
             {infoModalMessage && <InfoModal message={infoModalMessage} onClose={() => setInfoModalMessage('')} />}
             {showDeleteConfirm && <ConfirmModal onConfirm={handleDelete} onCancel={() => setShowDeleteConfirm(false)} message={`Apakah Anda yakin ingin menghapus data warga: ${deletingId?.nama}?`} />}
         </div>
@@ -885,17 +912,28 @@ function FilterSection({ filters, onFilterChange, userProfile }) {
     return (
         <div className="bg-white p-4 rounded-xl shadow-md">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <InputField type="text" name="nama" placeholder="Cari Nama..." value={filters.nama} onChange={onFilterChange} />
-                <InputField type="text" name="nik" placeholder="Cari NIK..." value={filters.nik} onChange={onFilterChange} />
-                <InputField type="text" name="kk" placeholder="Cari No. KK..." value={filters.kk} onChange={onFilterChange} />
+                <input type="text" name="nama" placeholder="Cari Nama..." value={filters.nama} onChange={onFilterChange} className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                <input type="text" name="nik" placeholder="Cari NIK..." value={filters.nik} onChange={onFilterChange} className="w-full p-2 
+border rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                <input type="text" name="kk" placeholder="Cari No. KK..." value={filters.kk} onChange={onFilterChange} className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500" />
                 {userProfile.role === 'superadmin' && (
                     <>
-                        <SelectField name="rt" value={filters.rt} onChange={onFilterChange} options={['semua', ...OPSI.rt]} label="Semua RT" />
-                        <SelectField name="rw" value={filters.rw} onChange={onFilterChange} options={['semua', ...OPSI.rw]} label="Semua RW" />
+                        <select name="rt" 
+value={filters.rt} onChange={onFilterChange} className="w-full p-2 border rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
+                            <option value="semua">Semua RT</option>{OPSI.rt.map(rt => <option key={rt} value={rt}>{rt}</option>)}
+                        </select>
+                        <select name="rw" value={filters.rw} onChange={onFilterChange} className="w-full p-2 border rounded-lg bg-white focus:ring-blue-500 
+focus:border-blue-500">
+                            <option value="semua">Semua RW</option>{OPSI.rw.map(rw => <option key={rw} value={rw}>{rw}</option>)}
+                        </select>
                     </>
                 )}
-                <SelectField name="jenisKelamin" value={filters.jenisKelamin} onChange={onFilterChange} options={['semua', ...OPSI.jenisKelamin]} label="Semua Jenis Kelamin" />
-                <SelectField name="statusPernikahan" value={filters.statusPernikahan} onChange={onFilterChange} options={['semua', ...OPSI.statusPernikahan]} label="Semua Status Pernikahan" />
+                <select name="jenisKelamin" value={filters.jenisKelamin} onChange={onFilterChange} className="w-full p-2 border rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
+                    <option value="semua">Semua Jenis Kelamin</option>{OPSI.jenisKelamin.map(jk => <option key={jk} value={jk}>{jk}</option>)}
+                </select>
+                <select name="statusPernikahan" value={filters.statusPernikahan} onChange={onFilterChange} className="w-full p-2 border rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
+                    <option value="semua">Semua Status Pernikahan</option>{OPSI.statusPernikahan.map(sp => <option key={sp} value={sp}>{sp}</option>)}
+                </select>
             </div>
         </div>
     );
