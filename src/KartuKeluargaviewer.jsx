@@ -12,7 +12,8 @@ const KartuKeluargaviewer = ({ dataKK, noKK, headerData }) => {
         <div className="font-sans text-xs border border-gray-400 p-4 mx-auto max-w-5xl bg-white" style={{ minWidth: '800px' }}>
             <div className="flex justify-between items-center mb-4">
                 <div className="text-center">
-                <img src="/images/logo.png" alt="Garuda Pancasila" className="h-12 mx-auto" />
+                    {/* Mengubah jalur gambar logo */}
+                    <img src="/logo.png" alt="Garuda Pancasila" className="h-12 mx-auto" />
                     
                     <p className="font-bold">REPUBLIK INDONESIA</p>
                 </div>
@@ -38,7 +39,7 @@ const KartuKeluargaviewer = ({ dataKK, noKK, headerData }) => {
                     <p>Kabupaten/Kota: {headerData.kabupatenKota}</p>
                     <p>Provinsi: {headerData.provinsi}</p>
                     <p>Kode Pos: {headerData.kodePos}</p>
-                    <p>Ditertibkan Tanggal: {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                    <p>Ditertibkan Tanggal: {headerData.ditertibkanTanggal}</p> {/* Menggunakan headerData.ditertibkanTanggal */}
                 </div>
             </div>
 
@@ -104,8 +105,8 @@ const KartuKeluargaviewer = ({ dataKK, noKK, headerData }) => {
                             <td className="border border-gray-400 p-1">{warga.tanggalPerkawinan || '-'}</td>
                             <td className="border border-gray-400 p-1">{warga.statusHubungan || '-'}</td>
                             <td className="border border-gray-400 p-1">{warga.kewarganegaraan || '-'}</td>
-                            <td className="border border-gray-400 p-1">{warga.noPassport || '-'}</td> {/* Asumsi ada field noPassport */}
-                            <td className="border border-gray-400 p-1">{warga.noKitap || '-'}</td> {/* Asumsi ada field noKitap */}
+                            <td className="border border-gray-400 p-1">{warga.noPassport || '-'}</td> 
+                            <td className="border border-gray-400 p-1">{warga.noKitap || '-'}</td> 
                             <td className="border border-gray-400 p-1">{warga.namaAyah || '-'}</td>
                             <td className="border border-gray-400 p-1">{warga.namaIbu || '-'}</td>
                         </tr>
