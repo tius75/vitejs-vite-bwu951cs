@@ -16,8 +16,6 @@ import {
     updateDoc, 
     deleteDoc,
     setDoc,
-    [span_0](start_span)getDoc, // Pastikan getDoc diimpor[span_0](end_span)
-    [span_1](start_span)getDocs, // Import getDocs untuk query snapshot[span_1](end_span)
     query,
     where,
     orderBy,
