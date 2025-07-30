@@ -120,13 +120,10 @@ const createLog = async (userEmail, action) => {
             action,
             timestamp: Timestamp.now()
         });
+    } catch (error) {
+        // Logging error di sini untuk debug internal, tanpa menyebabkan crash
+        console.error("Error creating log entry:", error); 
     }
-    /*
-    catch (error) {
-        // Jangan tampilkan error di console untuk log aktivitas jika ini adalah masalah Firebase permission
-        // console.error("Error creating log:", error); 
-    }
-    */
 };
 
 // --- KOMPONEN UTAMA: App ---
@@ -547,7 +544,7 @@ function KartuKeluarga({ userProfile }) {
     const [wargaDalamKK, setWargaDalamKK] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [infoModalMessage, setInfoModalMessage] = useState(''); // Untuk pesan info download
+    const [infoModalMessage, setInfoModalMessage] = useState(''); 
 
     // Ref untuk komponen KartuKeluargaviewer agar bisa di-capture oleh html2canvas
     const kkViewerRef = useRef(null);
@@ -606,33 +603,33 @@ function KartuKeluarga({ userProfile }) {
         }
         
         if (kkViewerRef.current) {
-            // Penting: Pastikan lebar kontainer KK di browser cukup untuk konten penuh
-            // Agar html2canvas tidak memotongnya. Anda mungkin perlu memaksa lebar div KartuKeluargaviewer
-            // di CSS atau inline style, seperti 'minWidth: "1200px"'.
+            // Skala yang tinggi sangat penting untuk kualitas
+            // useCORS dan allowTaint penting jika ada gambar dari luar domain (Cloudinary)
             const canvas = await html2canvas(kkViewerRef.current, {
-                scale: 2, 
+                scale: 3, // Meningkatkan skala untuk kualitas lebih tinggi
                 useCORS: true, 
                 allowTaint: true,
                 // Mengatur windowWidth dan windowHeight agar html2canvas melihat seluruh area scroll
+                // Ini penting jika konten melebihi viewport awal.
                 windowWidth: kkViewerRef.current.scrollWidth,
                 windowHeight: kkViewerRef.current.scrollHeight,
             }); 
             const imgData = canvas.toDataURL('image/jpeg', 1.0); 
 
-            const pdf = new jsPDF('landscape', 'mm', 'a4'); // Set ke 'landscape' untuk mode horizontal
-            const pdfWidth = pdf.internal.pageSize.getWidth(); // 297 mm untuk A4 lanskap
-            const pdfHeight = pdf.internal.pageSize.getHeight(); // 210 mm untuk A4 lanskap
+            const pdf = new jsPDF('landscape', 'mm', 'a4'); // Dipastikan mode lanskap
+            const pdfWidth = pdf.internal.pageSize.getWidth(); 
+            const pdfHeight = pdf.internal.pageSize.getHeight(); 
 
             const imgCanvasWidth = canvas.width;
             const imgCanvasHeight = canvas.height;
 
             const aspectRatio = imgCanvasWidth / imgCanvasHeight;
 
-            let imgPdfWidth = pdfWidth - 20; // 10mm margin kiri dan kanan
+            let imgPdfWidth = pdfWidth - 20; // Margin 10mm di kiri dan kanan
             let imgPdfHeight = imgPdfWidth / aspectRatio;
 
             // Jika tinggi hasil resize masih melebihi tinggi PDF, sesuaikan lagi
-            if (imgPdfHeight > pdfHeight - 20) { // 10mm margin atas dan bawah
+            if (imgPdfHeight > pdfHeight - 20) { 
                 imgPdfHeight = pdfHeight - 20;
                 imgPdfWidth = imgPdfHeight * aspectRatio;
             }
@@ -658,7 +655,7 @@ function KartuKeluarga({ userProfile }) {
 
         if (kkViewerRef.current) {
             const canvas = await html2canvas(kkViewerRef.current, {
-                scale: 2, 
+                scale: 3, // Meningkatkan skala untuk kualitas lebih tinggi
                 useCORS: true, 
                 allowTaint: true,
                 windowWidth: kkViewerRef.current.scrollWidth,
@@ -1097,21 +1094,22 @@ function DataWarga({ userProfile }) {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
                 <h2 className="text-3xl font-bold text-gray-800 mb-4 md:mb-0">Manajemen Data Warga {userProfile.role === 'operator' && `RT ${userProfile.rt}`}</h2>
                 <div className="flex flex-wrap gap-2">
-                    <button onClick={() => setIsImportModalOpen(true)} className="flex items-center space-x-2 bg-gray-600 text-white px-3 py-2 text-sm rounded-lg shadow hover:bg-gray-700 transition-colors">
+                    {/* Tombol Import/Export/PDF/Share di Data Warga */}
+                    <button onClick={() => setIsImportModalOpen(true)} className={`flex items-center space-x-2 bg-gray-600 text-white px-3 py-2 text-sm rounded-lg shadow hover:bg-gray-700 transition-colors ${filteredWarga.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}>
                         <ImportIcon />
                         <span>Import</span>
                     </button>
                     
-                    <button onClick={handleExport} className="flex items-center space-x-2 bg-green-600 text-white px-3 py-2 text-sm rounded-lg shadow hover:bg-green-700 transition-colors">
+                    <button onClick={handleExport} className={`flex items-center space-x-2 bg-green-600 text-white px-3 py-2 text-sm rounded-lg shadow hover:bg-green-700 transition-colors ${filteredWarga.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={filteredWarga.length === 0}>
                         <ExportIcon />
                         <span>Export</span>
                     </button>
-                    <button onClick={handleDownloadPdf} className="flex items-center space-x-2 bg-red-600 text-white px-3 py-2 text-sm rounded-lg shadow hover:bg-red-700 transition-colors">
+                    <button onClick={handleDownloadPdf} className={`flex items-center space-x-2 bg-red-600 text-white px-3 py-2 text-sm rounded-lg shadow hover:bg-red-700 transition-colors ${filteredWarga.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={filteredWarga.length === 0}>
                         <PdfIcon />
                         <span>PDF</span>
                     </button>
                 
-                    <button onClick={handleShare} className="flex items-center space-x-2 bg-teal-500 text-white px-3 py-2 text-sm rounded-lg shadow hover:bg-teal-600 transition-colors">
+                    <button onClick={handleShare} className={`flex items-center space-x-2 bg-teal-500 text-white px-3 py-2 text-sm rounded-lg shadow hover:bg-teal-600 transition-colors ${filteredWarga.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={filteredWarga.length === 0}>
                         <WhatsAppIcon />
                         <span>Share</span>
                     </button>
@@ -1214,11 +1212,11 @@ function WargaModal({ isOpen, onClose, wargaData, userProfile }) {
             kewarganegaraan: 'WNI', statusHubungan: OPSI.statusHubungan[0],
             golonganDarah: OPSI.golonganDarah[0], namaAyah: '', namaIbu: '', photoUrl: '',
             // Menambahkan field lokasi ke WargaModal
-            provinsi: localStorage.getItem('provinsi') || '', // Default dari pengaturan
-            kecamatan: localStorage.getItem('namaKecamatan') || '', // Default dari pengaturan
-            kelurahan: localStorage.getItem('namaKelurahan') || '', // Default dari pengaturan
-            kabupatenKota: localStorage.getItem('kabupatenKota') || '', // Default dari pengaturan
-            kodePos: localStorage.getItem('kodePos') || '', // Default dari pengaturan
+            provinsi: localStorage.getItem('provinsi') || '', 
+            kecamatan: localStorage.getItem('namaKecamatan') || '', 
+            kelurahan: localStorage.getItem('namaKelurahan') || '', 
+            kabupatenKota: localStorage.getItem('kabupatenKota') || '',
+            kodePos: localStorage.getItem('kodePos') || '',
         };
         setFormData(wargaData || initialData);
         if (wargaData?.photoUrl) {
@@ -1349,23 +1347,23 @@ function WargaModal({ isOpen, onClose, wargaData, userProfile }) {
                             name="provinsi" 
                             value={formData.provinsi} 
                             onChange={handleChange} 
-                            options={['', ...OPSI.provinsi]} 
+                            options={['Pilih Provinsi', ...OPSI.provinsi]} 
                         />
                         <SelectField 
                             label="Kecamatan" 
                             name="kecamatan" 
                             value={formData.kecamatan} 
                             onChange={handleChange} 
-                            options={['', ...OPSI.daftarKecamatan]} 
-                            disabled={!formData.provinsi}
+                            options={['Pilih Kecamatan', ...OPSI.daftarKecamatan]} 
+                            disabled={!formData.provinsi || formData.provinsi === 'Pilih Provinsi'}
                         />
                         <SelectField 
                             label="Kelurahan" 
                             name="kelurahan" 
                             value={formData.kelurahan} 
                             onChange={handleChange} 
-                            options={['', ...OPSI.getDaftarKelurahan(formData.kecamatan)]} 
-                            disabled={!formData.kecamatan}
+                            options={['Pilih Kelurahan', ...OPSI.getDaftarKelurahan(formData.kecamatan)]} 
+                            disabled={!formData.kecamatan || formData.kecamatan === 'Pilih Kecamatan'}
                         />
                         <InputField label="Kabupaten/Kota" name="kabupatenKota" value={formData.kabupatenKota} onChange={handleChange} />
                         <InputField label="Kode Pos" name="kodePos" value={formData.kodePos} onChange={handleChange} />
