@@ -76,9 +76,10 @@ const OPSI = {
     roles: ['superadmin', 'operator'],
     statusHubungan: ["Kepala Keluarga", "Istri", "Anak", "Famili Lain", "Lainnya"],
     golonganDarah: ["A", "B", "AB", "O", "Tidak Tahu"],
-    // New fields (example values, populate as needed or remove if dynamically set)
-    kecamatan: ["Makmur", "Sejahtera", "Damai"], 
-    kabupatenKota: ["Bekasi", "Jakarta", "Bandung"], 
+    // Contoh data untuk opsi wilayah, bisa disesuaikan atau diambil dari API
+    kecamatan: ["Cikarang Barat", "Cikarang Utara", "Tambun Selatan"], 
+    kelurahan: ["Jatimulya", "Margahayu", "Duren Jaya"],
+    kabupatenKota: ["Kabupaten Bekasi", "Kota Bekasi", "Kabupaten Karawang"], 
     provinsi: ["Jawa Barat", "DKI Jakarta", "Banten"], 
 };
 
@@ -714,8 +715,14 @@ function DataWarga({ userProfile }) {
             'Alamat': w.alamat, 
             'RT': w.rt, 
             'RW': w.rw,
+            'Kelurahan': w.kelurahan, // Tambah kolom kelurahan
+            'Kecamatan': w.kecamatan, // Tambah kolom kecamatan
+            'Kabupaten/Kota': w.kabupatenKota, // Tambah kolom kabupaten/kota
+            'Provinsi': w.provinsi, // Tambah kolom provinsi
+            'Kode Pos': w.kodePos, // Tambah kolom kode pos
             'Status Tinggal': w.statusTinggal,
             'Kewarganegaraan': w.kewarganegaraan,
+            'URL Foto': w.photoURL || '', // Tambah URL Foto
         }));
         const worksheet = XLSX.utils.json_to_sheet(dataToExport);
         const workbook = XLSX.utils.book_new();
@@ -729,63 +736,113 @@ function DataWarga({ userProfile }) {
             setInfoModalMessage("Tidak ada data untuk dibagikan. Silakan filter data terlebih dahulu.");
             return;
         }
+        
+        // Dapatkan data pengaturan dari localStorage
+        const namaKelurahan = localStorage.getItem('namaKelurahan') || 'Kelurahan Anda';
+        const namaKecamatan = localStorage.getItem('namaKecamatan') || 'Kecamatan Anda';
+        const kabupatenKota = localStorage.getItem('kabupatenKota') || 'Kabupaten/Kota Anda';
+        const provinsi = localStorage.getItem('provinsi') || 'Provinsi Anda';
 
-        // Generate KTP-like card text for the first filtered resident
+        // Hanya ambil data warga pertama untuk simulasi kartu KTP
         const wargaToShare = filteredWarga[0]; 
+        
+        // Format tanggal lahir dan tanggal perkawinan jika ada
+        const tglLahirFormatted = wargaToShare.tanggalLahir ? new Date(wargaToShare.tanggalLahir).toLocaleDateString('id-ID', {day: '2-digit', month: 'long', year: 'numeric'}) : '-';
+        const tglKawinFormatted = wargaToShare.tanggalPerkawinan ? new Date(wargaToShare.tanggalPerkawinan).toLocaleDateString('id-ID', {day: '2-digit', month: 'long', year: 'numeric'}) : '-';
+
         let cardText = `
 *--- KARTU TANDA PENDUDUK ---*
+🇮🇩 _${provinsi.toUpperCase()}_
+🏛️ _${kabupatenKota.toUpperCase()}_
 ➖➖➖➖➖➖➖➖➖➖➖➖
-*NIK*: ${wargaToShare.nik || '-'}
-*Nama*: ${wargaToShare.nama || '-'}
-*Tempat/Tgl Lahir*: ${wargaToShare.tempatLahir || '-'}, ${wargaToShare.tanggalLahir || '-'}
-*Jenis Kelamin*: ${wargaToShare.jenisKelamin || '-'}
-*Gol. Darah*: ${wargaToShare.golonganDarah || '-'}
-*Alamat*: ${wargaToShare.alamat || '-'}
-  *RT/RW*: ${wargaToShare.rt || '-'}/${wargaToShare.rw || '-'}
-*Agama*: ${wargaToShare.agama || '-'}
-*Status Perkawinan*: ${wargaToShare.statusPernikahan || '-'}
-*Tgl. Perkawinan*: ${wargaToShare.tanggalPerkawinan || '-'}
-*Pekerjaan*: ${wargaToShare.pekerjaan || '-'}
-*Pendidikan*: ${wargaToShare.pendidikan || '-'}
-*Status Hubungan*: ${wargaToShare.statusHubungan || '-'}
-*Nama Ayah*: ${wargaToShare.namaAyah || '-'}
-*Nama Ibu*: ${wargaToShare.namaIbu || '-'}
-*Kewarganegaraan*: ${wargaToShare.kewarganegaraan || '-'}
+*NIK* : ${wargaToShare.nik || '-'}
+*Nama* : ${wargaToShare.nama || '-'}
+*Tempat/Tgl Lahir* : ${wargaToShare.tempatLahir || '-'}, ${tglLahirFormatted}
+*Jenis Kelamin* : ${wargaToShare.jenisKelamin || '-'}
+*Gol. Darah* : ${wargaToShare.golonganDarah || '-'}
+*Alamat* : ${wargaToShare.alamat || '-'}
+  *RT/RW* : ${wargaToShare.rt || '-'}/${wargaToShare.rw || '-'}
+  *Kel/Desa* : ${wargaToShare.kelurahan || namaKelurahan}
+  *Kecamatan* : ${wargaToShare.kecamatan || namaKecamatan}
+*Agama* : ${wargaToShare.agama || '-'}
+*Status Perkawinan* : ${wargaToShare.statusPernikahan || '-'}
+*Tgl. Perkawinan* : ${tglKawinFormatted}
+*Pekerjaan* : ${wargaToShare.pekerjaan || '-'}
+*Pendidikan* : ${wargaToShare.pendidikan || '-'}
+*Status Hubungan Keluarga* : ${wargaToShare.statusHubungan || '-'}
+*Nama Ayah* : ${wargaToShare.namaAyah || '-'}
+*Nama Ibu* : ${wargaToShare.namaIbu || '-'}
+*Kewarganegaraan* : ${wargaToShare.kewarganegaraan || '-'}
+${wargaToShare.photoURL ? `\n*URL Foto*: ${wargaToShare.photoURL}` : ''}
 ➖➖➖➖➖➖➖➖➖➖➖➖
         `;
         
         if (filteredWarga.length > 1) {
-            cardText += `\n*...dan ${filteredWarga.length - 1} data warga lainnya. Silakan unduh PDF untuk detail lengkap.*`;
+            cardText += `\n_Terdapat ${filteredWarga.length - 1} data warga lain. Silakan unduh PDF untuk detail lengkap._`;
         }
-
 
         const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(cardText)}`;
         window.open(whatsappUrl, '_blank');
         createLog(userProfile.email, `Membagikan laporan ${filteredWarga.length} warga via WhatsApp.`);
     };
     
-    const handleDownloadPdf = () => {
+    const handleDownloadPdf = async () => { // Make it async to handle image loading
         if (filteredWarga.length === 0) {
             setInfoModalMessage("Tidak ada data untuk diunduh. Silakan filter data terlebih dahulu.");
             return;
         }
 
-        const doc = new jsPDF('landscape'); // Use landscape for wider tables
-        doc.setFontSize(14);
-        doc.text("Laporan Data Warga", 14, 16);
+        const doc = new jsPDF('landscape'); // Gunakan landscape untuk tabel yang lebih lebar
+
+        // Dapatkan data pengaturan dari localStorage
+        const namaKelurahan = localStorage.getItem('namaKelurahan') || 'Kelurahan Anda';
+        const alamatKelurahan = localStorage.getItem('alamatKelurahan') || 'Alamat kelurahan belum diatur';
+        const namaKecamatan = localStorage.getItem('namaKecamatan') || 'Kecamatan Anda';
+        const kabupatenKota = localStorage.getItem('kabupatenKota') || 'Kabupaten/Kota Anda';
+        const provinsi = localStorage.getItem('provinsi') || 'Provinsi Anda';
+        const kodePos = localStorage.getItem('kodePos') || '';
+
+        // Header Laporan
+        doc.setFontSize(16);
+        doc.text("LAPORAN DATA PENDUDUK", doc.internal.pageSize.width / 2, 10, { align: 'center' });
+        doc.setFontSize(12);
+        doc.text(`${namaKelurahan.toUpperCase()}`, doc.internal.pageSize.width / 2, 17, { align: 'center' });
         doc.setFontSize(10);
-        doc.text(`Total: ${filteredWarga.length} warga`, 14, 22);
+        doc.text(`${alamatKelurahan}, KEC. ${namaKecamatan.toUpperCase()}, ${kabupatenKota.toUpperCase()}`, doc.internal.pageSize.width / 2, 22, { align: 'center' });
+        doc.text(`${provinsi.toUpperCase()} ${kodePos ? `, KODE POS ${kodePos}` : ''}`, doc.internal.pageSize.width / 2, 27, { align: 'center' });
+        
+        doc.setFontSize(10);
+        doc.text(`Total Warga: ${filteredWarga.length}`, 14, 35);
         
         const tableColumn = [
-            "No", "Nama", "NIK", "No KK", "Tpt/Tgl Lahir", "Tgl Kawin", "JK", 
-            "Agama", "Pend", "Pekerjaan", "Sts Nikah", "Sts Hubungan", 
-            "Gol Darah", "Ayah", "Ibu", "Alamat", "RT/RW", "Sts Tinggal", "Warganegara"
+            "No", "Nama", "NIK", "KK", "Tpt/Tgl Lahir", "Tgl Kawin", "JK", 
+            "Agama", "Pend", "Kerja", "Sts Nikah", "Sts Hub", 
+            "Gol Darah", "Ayah", "Ibu", "Alamat", "RT/RW", "Kel", "Kec", 
+            "Kab/Kota", "Prov", "Pos", "Sts Tinggal", "WNA", "Foto" // Kolom baru untuk foto
         ];
+
         const tableRows = [];
 
-        filteredWarga.forEach((warga, index) => {
+        for (const warga of filteredWarga) {
+            // Ambil gambar dan konversi ke base64 jika ada
+            let imageData = '';
+            if (warga.photoURL) {
+                try {
+                    const response = await fetch(warga.photoURL);
+                    const blob = await response.blob();
+                    imageData = await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result);
+                        reader.readAsDataURL(blob);
+                    });
+                } catch (error) {
+                    console.error("Error loading image for PDF:", error);
+                    imageData = ''; // Reset if error
+                }
+            }
+
             const wargaData = [
-                index + 1,
+                filteredWarga.indexOf(warga) + 1,
                 warga.nama || '',
                 warga.nik || '',
                 warga.kk || '',
@@ -802,38 +859,56 @@ function DataWarga({ userProfile }) {
                 warga.namaIbu || '',
                 warga.alamat || '',
                 `${warga.rt || ''}/${warga.rw || ''}`,
+                warga.kelurahan || '',
+                warga.kecamatan || '',
+                warga.kabupatenKota || '',
+                warga.provinsi || '',
+                warga.kodePos || '',
                 warga.statusTinggal || '',
-                warga.kewarganegaraan || ''
+                warga.kewarganegaraan || '',
+                { content: '', image: imageData, styles: { cellWidth: 15, cellHeight: 15 } } // Placeholder for image
             ];
             tableRows.push(wargaData);
-        });
+        }
+
         autoTable(doc, {
             head: [tableColumn],
             body: tableRows,
-            startY: 28,
-            theme: 'striped',
-            styles: { fontSize: 6, cellPadding: 1, overflow: 'linebreak' }, // Smaller font and padding
+            startY: 40, // Sesuaikan startY setelah header laporan
+            theme: 'grid',
+            styles: { fontSize: 6, cellPadding: 1, overflow: 'linebreak' }, // Ukuran font dan padding lebih kecil
             headStyles: { fillColor: [200, 200, 200], textColor: [0, 0, 0], fontStyle: 'bold' },
             columnStyles: {
                 0: { cellWidth: 8 },  // No
                 1: { cellWidth: 25 }, // Nama
                 2: { cellWidth: 20 }, // NIK
-                3: { cellWidth: 20 }, // No KK
-                4: { cellWidth: 25 }, // Tempat/Tgl Lahir
+                3: { cellWidth: 20 }, // KK
+                4: { cellWidth: 25 }, // Tpt/Tgl Lahir
                 5: { cellWidth: 15 }, // Tgl Kawin
                 6: { cellWidth: 10 }, // JK
                 7: { cellWidth: 15 }, // Agama
                 8: { cellWidth: 15 }, // Pend
                 9: { cellWidth: 20 }, // Pekerjaan
                 10: { cellWidth: 15 },// Sts Nikah
-                11: { cellWidth: 15 },// Sts Hubungan
+                11: { cellWidth: 15 },// Sts Hub
                 12: { cellWidth: 10 },// Gol Darah
                 13: { cellWidth: 20 },// Ayah
                 14: { cellWidth: 20 },// Ibu
                 15: { cellWidth: 30 },// Alamat
                 16: { cellWidth: 10 },// RT/RW
-                17: { cellWidth: 15 },// Sts Tinggal
-                18: { cellWidth: 15 },// Warganegara
+                17: { cellWidth: 15 },// Kel
+                18: { cellWidth: 15 },// Kec
+                19: { cellWidth: 20 },// Kab/Kota
+                20: { cellWidth: 15 },// Prov
+                21: { cellWidth: 10 },// Pos
+                22: { cellWidth: 15 },// Sts Tinggal
+                23: { cellWidth: 10 },// WNA
+                24: { cellWidth: 15, cellHeight: 15 }, // Foto
+            },
+            didDrawCell: (data) => {
+                if (data.column.index === 24 && data.cell.raw && data.cell.raw.image) {
+                    doc.addImage(data.cell.raw.image, 'JPEG', data.cell.x + 1, data.cell.y + 1, data.cell.raw.styles.cellWidth - 2, data.cell.raw.styles.cellHeight - 2);
+                }
             }
         });
         doc.save("laporan_warga.pdf");
@@ -912,28 +987,17 @@ function FilterSection({ filters, onFilterChange, userProfile }) {
     return (
         <div className="bg-white p-4 rounded-xl shadow-md">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <input type="text" name="nama" placeholder="Cari Nama..." value={filters.nama} onChange={onFilterChange} className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500" />
-                <input type="text" name="nik" placeholder="Cari NIK..." value={filters.nik} onChange={onFilterChange} className="w-full p-2 
-border rounded-lg focus:ring-blue-500 focus:border-blue-500" />
-                <input type="text" name="kk" placeholder="Cari No. KK..." value={filters.kk} onChange={onFilterChange} className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                <InputField type="text" name="nama" placeholder="Cari Nama..." value={filters.nama} onChange={onFilterChange} />
+                <InputField type="text" name="nik" placeholder="Cari NIK..." value={filters.nik} onChange={onFilterChange} />
+                <InputField type="text" name="kk" placeholder="Cari No. KK..." value={filters.kk} onChange={onFilterChange} />
                 {userProfile.role === 'superadmin' && (
                     <>
-                        <select name="rt" 
-value={filters.rt} onChange={onFilterChange} className="w-full p-2 border rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
-                            <option value="semua">Semua RT</option>{OPSI.rt.map(rt => <option key={rt} value={rt}>{rt}</option>)}
-                        </select>
-                        <select name="rw" value={filters.rw} onChange={onFilterChange} className="w-full p-2 border rounded-lg bg-white focus:ring-blue-500 
-focus:border-blue-500">
-                            <option value="semua">Semua RW</option>{OPSI.rw.map(rw => <option key={rw} value={rw}>{rw}</option>)}
-                        </select>
+                        <SelectField label="Filter RT" name="rt" value={filters.rt} onChange={onFilterChange} options={['semua', ...OPSI.rt]} />
+                        <SelectField label="Filter RW" name="rw" value={filters.rw} onChange={onFilterChange} options={['semua', ...OPSI.rw]} />
                     </>
                 )}
-                <select name="jenisKelamin" value={filters.jenisKelamin} onChange={onFilterChange} className="w-full p-2 border rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
-                    <option value="semua">Semua Jenis Kelamin</option>{OPSI.jenisKelamin.map(jk => <option key={jk} value={jk}>{jk}</option>)}
-                </select>
-                <select name="statusPernikahan" value={filters.statusPernikahan} onChange={onFilterChange} className="w-full p-2 border rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
-                    <option value="semua">Semua Status Pernikahan</option>{OPSI.statusPernikahan.map(sp => <option key={sp} value={sp}>{sp}</option>)}
-                </select>
+                <SelectField label="Filter Jenis Kelamin" name="jenisKelamin" value={filters.jenisKelamin} onChange={onFilterChange} options={['semua', ...OPSI.jenisKelamin]} />
+                <SelectField label="Filter Status Pernikahan" name="statusPernikahan" value={filters.statusPernikahan} onChange={onFilterChange} options={['semua', ...OPSI.statusPernikahan]} />
             </div>
         </div>
     );
@@ -942,6 +1006,8 @@ focus:border-blue-500">
 function WargaModal({ isOpen, onClose, wargaData, userProfile }) {
     const [formData, setFormData] = useState({});
     const [submitting, setSubmitting] = useState(false);
+    const [selectedImage, setSelectedImage] = useState(null); // State untuk file gambar yang dipilih
+    const [imageUrl, setImageUrl] = useState(''); // State untuk URL gambar setelah diunggah
 
     useEffect(() => {
         const defaultRt = userProfile?.role === 'operator' ? userProfile.rt : OPSI.rt[0];
@@ -952,30 +1018,90 @@ function WargaModal({ isOpen, onClose, wargaData, userProfile }) {
             alamat: '', rt: defaultRt, rw: OPSI.rw[0], statusTinggal: OPSI.statusTinggal[0], 
             kewarganegaraan: 'WNI', statusHubungan: OPSI.statusHubungan[0],
             golonganDarah: OPSI.golonganDarah[0], namaAyah: '', namaIbu: '',
+            kelurahan: OPSI.kelurahan[0], kecamatan: OPSI.kecamatan[0], 
+            kabupatenKota: OPSI.kabupatenKota[0], provinsi: OPSI.provinsi[0], kodePos: '',
+            photoURL: '', // Tambah field untuk URL foto
         };
         setFormData(wargaData || initialData);
+        setImageUrl(wargaData?.photoURL || ''); // Set URL gambar jika ada data warga yang diedit
+        setSelectedImage(null); // Reset selected image when modal opens/changes wargaData
     }, [wargaData, userProfile]);
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleImageChange = (e) => {
+        if (e.target.files[0]) {
+            setSelectedImage(e.target.files[0]);
+            setImageUrl(URL.createObjectURL(e.target.files[0])); // Preview image
+        } else {
+            setSelectedImage(null);
+            setImageUrl(wargaData?.photoURL || ''); // Revert to existing URL if any
+        }
+    };
+
+    const uploadImage = async () => {
+        if (!selectedImage) return '';
+
+        const cloudinaryCloudName = localStorage.getItem('cloudinaryCloudName');
+        const cloudinaryUploadPreset = localStorage.getItem('cloudinaryUploadPreset');
+
+        if (!cloudinaryCloudName || !cloudinaryUploadPreset) {
+            alert('Konfigurasi Cloudinary belum lengkap di halaman Pengaturan!');
+            return '';
+        }
+
+        const data = new FormData();
+        data.append('file', selectedImage);
+        data.append('upload_preset', cloudinaryUploadPreset);
+
+        try {
+            const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/image/upload`, {
+                method: 'POST',
+                body: data,
+            });
+            const file = await res.json();
+            return file.secure_url;
+        } catch (error) {
+            console.error("Error uploading image to Cloudinary:", error);
+            alert("Gagal mengunggah foto ke Cloudinary.");
+            return '';
+        }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSubmitting(true);
         try {
+            let finalPhotoURL = formData.photoURL;
+            if (selectedImage) {
+                finalPhotoURL = await uploadImage();
+                if (!finalPhotoURL) { // If upload failed, stop submission
+                    setSubmitting(false);
+                    return;
+                }
+            } else if (wargaData && !wargaData.photoURL && !imageUrl) {
+                 // If no new image and no existing image, and imageUrl was cleared by user
+                finalPhotoURL = ''; 
+            }
+            
+            const dataToSave = { ...formData, photoURL: finalPhotoURL };
+
             const wargaCollectionRef = collection(db, `warga`);
             if (wargaData?.id) {
                 const docRef = doc(db, `warga`, wargaData.id);
-                await updateDoc(docRef, formData);
+                await updateDoc(docRef, dataToSave);
                 await createLog(userProfile.email, `Memperbarui data warga: ${formData.nama}`);
             } else {
-                await addDoc(wargaCollectionRef, formData);
+                await addDoc(wargaCollectionRef, dataToSave);
                 await createLog(userProfile.email, `Menambah warga baru: ${formData.nama}`);
             }
             onClose();
         } catch (error) {
             console.error("Error saving document: ", error);
+            alert("Terjadi kesalahan saat menyimpan data warga.");
         } finally {
             setSubmitting(false);
         }
@@ -1009,8 +1135,36 @@ function WargaModal({ isOpen, onClose, wargaData, userProfile }) {
                         <InputField label="Alamat Lengkap" name="alamat" value={formData.alamat} onChange={handleChange} className="md:col-span-2" />
                         <SelectField label="RT" name="rt" value={formData.rt} onChange={handleChange} options={OPSI.rt} disabled={userProfile?.role === 'operator'} />
                         <SelectField label="RW" name="rw" value={formData.rw} onChange={handleChange} options={OPSI.rw} />
+                        <SelectField label="Kelurahan" name="kelurahan" value={formData.kelurahan} onChange={handleChange} options={OPSI.kelurahan} />
+                        <SelectField label="Kecamatan" name="kecamatan" value={formData.kecamatan} onChange={handleChange} options={OPSI.kecamatan} />
+                        <SelectField label="Kabupaten/Kota" name="kabupatenKota" value={formData.kabupatenKota} onChange={handleChange} options={OPSI.kabupatenKota} />
+                        <SelectField label="Provinsi" name="provinsi" value={formData.provinsi} onChange={handleChange} options={OPSI.provinsi} />
+                        <InputField label="Kode Pos" name="kodePos" value={formData.kodePos} onChange={handleChange} />
                         <SelectField label="Status Tempat Tinggal" name="statusTinggal" value={formData.statusTinggal} onChange={handleChange} options={OPSI.statusTinggal} />
                         <InputField label="Kewarganegaraan" name="kewarganegaraan" value={formData.kewarganegaraan} onChange={handleChange} />
+                        
+                        {/* Input untuk foto */}
+                        <div className="md:col-span-2">
+                            <InputField 
+                                label="Foto Warga (Opsional)" 
+                                name="photo" 
+                                type="file" 
+                                onChange={handleImageChange} 
+                                accept="image/*" 
+                            />
+                            {imageUrl && (
+                                <div className="mt-2">
+                                    <img src={imageUrl} alt="Preview" className="max-w-xs h-auto rounded-lg shadow-md" />
+                                    <button 
+                                        type="button" 
+                                        onClick={() => { setSelectedImage(null); setImageUrl(''); }} 
+                                        className="text-red-500 text-sm mt-1 hover:underline"
+                                    >
+                                        Hapus Foto
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                     <div className="flex justify-end pt-4 border-t mt-4">
                         <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg mr-2 hover:bg-gray-300">Batal</button>
@@ -1062,8 +1216,14 @@ function ImportModal({ isOpen, onClose, userProfile }) {
                         'Alamat': 'alamat', 
                         'RT': 'rt', 
                         'RW': 'rw',
+                        'Kelurahan': 'kelurahan', // Tambah kolom kelurahan
+                        'Kecamatan': 'kecamatan', // Tambah kolom kecamatan
+                        'Kabupaten/Kota': 'kabupatenKota', // Tambah kolom kabupaten/kota
+                        'Provinsi': 'provinsi', // Tambah kolom provinsi
+                        'Kode Pos': 'kodePos', // Tambah kolom kode pos
                         'Status Tinggal': 'statusTinggal',
                         'Kewarganegaraan': 'kewarganegaraan',
+                        'URL Foto': 'photoURL', // Tambah kolom URL Foto
                     };
                     const parsedData = jsonData.slice(1).map(row => {
                         let obj = {};
@@ -1124,7 +1284,7 @@ function ImportModal({ isOpen, onClose, userProfile }) {
                 <div className="p-6 space-y-4">
                     <div className="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 rounded">
                         <p className="font-bold">Petunjuk</p>
-                        <p className="text-sm">Pastikan file Excel Anda memiliki kolom header berikut di baris pertama: <br/> <code className="text-xs">Nama Lengkap, NIK, No KK, Tempat Lahir, Tanggal Lahir, Tanggal Perkawinan, Jenis Kelamin, Agama, Pendidikan, Pekerjaan, Status Pernikahan, Status Hubungan Keluarga, Golongan Darah, Nama Ayah, Nama Ibu, Alamat, RT, RW, Status Tinggal, Kewarganegaraan</code></p>
+                        <p className="text-sm">Pastikan file Excel Anda memiliki kolom header berikut di baris pertama: <br/> <code className="text-xs">Nama Lengkap, NIK, No KK, Tempat Lahir, Tanggal Lahir, Tanggal Perkawinan, Jenis Kelamin, Agama, Pendidikan, Pekerjaan, Status Pernikahan, Status Hubungan Keluarga, Golongan Darah, Nama Ayah, Nama Ibu, Alamat, RT, RW, Kelurahan, Kecamatan, Kabupaten/Kota, Provinsi, Kode Pos, Status Tinggal, Kewarganegaraan, URL Foto</code></p>
                     </div>
                     <InputField type="file" label="Pilih File Excel (.xlsx)" name="file" onChange={handleFileChange} accept=".xlsx, .xls" />
                     {error && <p className="text-red-500 text-sm">{error}</p>}
