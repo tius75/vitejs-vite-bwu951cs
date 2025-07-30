@@ -603,20 +603,16 @@ function KartuKeluarga({ userProfile }) {
         }
         
         if (kkViewerRef.current) {
-            // Skala yang tinggi sangat penting untuk kualitas
-            // useCORS dan allowTaint penting jika ada gambar dari luar domain (Cloudinary)
             const canvas = await html2canvas(kkViewerRef.current, {
-                scale: 3, // Meningkatkan skala untuk kualitas lebih tinggi
+                scale: 3, 
                 useCORS: true, 
                 allowTaint: true,
-                // Mengatur windowWidth dan windowHeight agar html2canvas melihat seluruh area scroll
-                // Ini penting jika konten melebihi viewport awal.
                 windowWidth: kkViewerRef.current.scrollWidth,
                 windowHeight: kkViewerRef.current.scrollHeight,
             }); 
             const imgData = canvas.toDataURL('image/jpeg', 1.0); 
 
-            const pdf = new jsPDF('landscape', 'mm', 'a4'); // Dipastikan mode lanskap
+            const pdf = new jsPDF('landscape', 'mm', 'a4'); 
             const pdfWidth = pdf.internal.pageSize.getWidth(); 
             const pdfHeight = pdf.internal.pageSize.getHeight(); 
 
@@ -625,16 +621,14 @@ function KartuKeluarga({ userProfile }) {
 
             const aspectRatio = imgCanvasWidth / imgCanvasHeight;
 
-            let imgPdfWidth = pdfWidth - 20; // Margin 10mm di kiri dan kanan
+            let imgPdfWidth = pdfWidth - 20; 
             let imgPdfHeight = imgPdfWidth / aspectRatio;
 
-            // Jika tinggi hasil resize masih melebihi tinggi PDF, sesuaikan lagi
             if (imgPdfHeight > pdfHeight - 20) { 
                 imgPdfHeight = pdfHeight - 20;
                 imgPdfWidth = imgPdfHeight * aspectRatio;
             }
 
-            // Posisikan gambar di tengah halaman
             const x = (pdfWidth - imgPdfWidth) / 2;
             const y = (pdfHeight - imgPdfHeight) / 2;
             
@@ -655,7 +649,7 @@ function KartuKeluarga({ userProfile }) {
 
         if (kkViewerRef.current) {
             const canvas = await html2canvas(kkViewerRef.current, {
-                scale: 3, // Meningkatkan skala untuk kualitas lebih tinggi
+                scale: 3, 
                 useCORS: true, 
                 allowTaint: true,
                 windowWidth: kkViewerRef.current.scrollWidth,
@@ -1094,8 +1088,8 @@ function DataWarga({ userProfile }) {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
                 <h2 className="text-3xl font-bold text-gray-800 mb-4 md:mb-0">Manajemen Data Warga {userProfile.role === 'operator' && `RT ${userProfile.rt}`}</h2>
                 <div className="flex flex-wrap gap-2">
-                    {/* Tombol Import/Export/PDF/Share di Data Warga */}
-                    <button onClick={() => setIsImportModalOpen(true)} className={`flex items-center space-x-2 bg-gray-600 text-white px-3 py-2 text-sm rounded-lg shadow hover:bg-gray-700 transition-colors ${filteredWarga.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    {/* Tombol Import/Export/PDF/Share di Data Warga: Ditambah kondisi disabled */}
+                    <button onClick={() => setIsImportModalOpen(true)} className={`flex items-center space-x-2 bg-gray-600 text-white px-3 py-2 text-sm rounded-lg shadow hover:bg-gray-700 transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={loading}>
                         <ImportIcon />
                         <span>Import</span>
                     </button>
@@ -1141,9 +1135,9 @@ function DataWarga({ userProfile }) {
                                 <td className="px-6 py-4">{warga.pendidikan}</td><td className="px-6 py-4">{warga.alamat}</td>
                                 <td className="px-6 py-4">{warga.rt}/{warga.rw}</td>
                
+                                {/* Pastikan tombol edit ada di sini */}
                                 <td className="px-6 py-4 flex items-center space-x-2">
                                     <button onClick={() => openEditModal(warga)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full"><EditIcon /></button>
-                                  
                                     <button onClick={() => confirmDelete(warga.id)} className="p-2 text-red-600 hover:bg-red-100 rounded-full"><TrashIcon /></button>
                                 </td>
                             </tr>
@@ -1533,7 +1527,7 @@ function ConfirmModal({ onConfirm, onCancel, message }) {
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center">
             <div className="bg-white p-6 rounded-lg shadow-xl text-center">
                 <h3 className="text-lg font-bold mb-4">Konfirmasi</h3>
-                <p className="text-gray-600 mb-6">{message || "Apakah Anda yakin?"}</p>
+                <p className="text-gray-600 mb-6">{message}</p>
                 <div className="flex justify-center space-x-4">
                     <button onClick={onCancel} className="bg-gray-300 text-gray-800 px-6 py-2 rounded-lg hover:bg-gray-400">Batal</button>
                     <button onClick={onConfirm} className="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600">Hapus</button>
