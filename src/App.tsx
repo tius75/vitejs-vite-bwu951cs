@@ -1,6 +1,4 @@
-import KartuKeluargaViewer from './KartuKeluargaViewer';
-
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react'; // Tambahkan useRef
 import { initializeApp } from 'firebase/app';
 import { 
     getAuth, 
@@ -30,6 +28,11 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import html2canvas from 'html2canvas'; // Import html2canvas
+
+// Asumsi Anda sudah memiliki komponen ini di KartuKeluargaviewer.jsx
+// Anda perlu memastikan jalur impor ini benar
+import KartuKeluargaviewer from './KartuKeluargaviewer'; 
 
 // --- IKON (SVG) ---
 const UserIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>;
@@ -66,8 +69,7 @@ const secondaryApp = initializeApp(firebaseConfig, "secondary");
 const secondaryAuth = getAuth(secondaryApp);
 
 
-// --- DATA KONSTAN UNTUK OPSI DROPDOWN ---
-// Anda dapat mengedit daftar ini langsung di sini jika ada perubahan
+// --- DATA KONSTAN ---
 const OPSI = {
     agama: ["Islam", "Kristen Protestan", "Kristen Katolik", "Hindu", "Buddha", "Khonghucu", "Lainnya"],
     jenisKelamin: ["Laki-laki", "Perempuan"],
@@ -79,11 +81,10 @@ const OPSI = {
     roles: ['superadmin', 'operator'],
     statusHubungan: ["Kepala Keluarga", "Istri", "Anak", "Famili Lain", "Lainnya"],
     golonganDarah: ["A", "B", "AB", "O", "Tidak Tahu"],
-    // Opsi Lokasi
-    kelurahan: ["Jatimulya", "Margahayu", "Duren Jaya", "Mustika Jaya", "Pengasinan", "Sepanjang Jaya"],
-    kecamatan: ["Cikarang Barat", "Cikarang Utara", "Tambun Selatan", "Bekasi Timur", "Bantargebang"], 
-    kabupatenKota: ["Kabupaten Bekasi", "Kota Bekasi", "Kabupaten Karawang", "Kota Bandung", "Kabupaten Bogor"], 
-    provinsi: ["Jawa Barat", "DKI Jakarta", "Banten", "Jawa Tengah", "Jawa Timur"], 
+    // New fields (example values, populate as needed or remove if dynamically set)
+    kecamatan: ["Makmur", "Sejahtera", "Damai"], 
+    kabupatenKota: ["Bekasi", "Jakarta", "Bandung"], 
+    provinsi: ["Jawa Barat", "DKI Jakarta", "Banten"], 
 };
 
 // --- FUNGSI BANTU ---
@@ -159,6 +160,7 @@ export default function App() {
                     {currentPage === 'data-warga' && <DataWarga userProfile={authState.userProfile} />}
                     {currentPage === 'manajemen-user' && authState.userProfile?.role === 'superadmin' && <ManajemenUser userProfile={authState.userProfile} />}
                     {currentPage === 'log-aktivitas' && authState.userProfile?.role === 'superadmin' && <AktivitasLog />}
+                    {currentPage === 'kartu-keluarga' && <KartuKeluarga userProfile={authState.userProfile} />} {/* Halaman Kartu Keluarga Baru */}
                     {currentPage === 'pengaturan' && <Pengaturan />}
                 </main>
                 <Footer />
@@ -193,6 +195,7 @@ function Sidebar({ user, userProfile, currentPage, setCurrentPage }) {
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: <HomeIcon />, roles: ['superadmin', 'operator'] },
         { id: 'data-warga', label: 'Data Warga', icon: <DatabaseIcon />, roles: ['superadmin', 'operator'] },
+        { id: 'kartu-keluarga', label: 'Kartu Keluarga', icon: <DatabaseIcon />, roles: ['superadmin', 'operator'] }, // Tambah item navigasi KK
         { id: 'manajemen-user', label: 'Manajemen User', icon: <UsersIcon />, roles: ['superadmin'] },
         { id: 'log-aktivitas', label: 'Log Aktivitas', icon: <ActivityIcon />, roles: ['superadmin'] },
         { id: 'pengaturan', label: 'Pengaturan', icon: <SettingsIcon />, roles: ['superadmin', 'operator'] },
@@ -494,7 +497,158 @@ function AddUserModal({ isOpen, onClose, currentUserProfile }) {
     );
 }
 
-// --- KOMPONEN HALAMAN LAINNYA ---
+// --- HALAMAN BARU: KARTU KELUARGA ---
+function KartuKeluarga({ userProfile }) {
+    const [noKK, setNoKK] = useState('');
+    const [wargaDalamKK, setWargaDalamKK] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    // Ref untuk komponen KartuKeluargaviewer agar bisa di-capture oleh html2canvas
+    const kkViewerRef = useRef(null);
+
+    const headerData = {
+        namaKelurahan: localStorage.getItem('namaKelurahan') || 'Kelurahan Tidak Diketahui',
+        alamatKelurahan: localStorage.getItem('alamatKelurahan') || 'Alamat Tidak Diketahui',
+        namaKecamatan: localStorage.getItem('namaKecamatan') || 'Kecamatan Tidak Diketahui',
+        kabupatenKota: localStorage.getItem('kabupatenKota') || 'Kabupaten/Kota Tidak Diketahui',
+        provinsi: localStorage.getItem('provinsi') || 'Provinsi Tidak Diketahui',
+        kodePos: localStorage.getItem('kodePos') || 'Kode Pos Tidak Diketahui',
+    };
+
+    const handleSearchKK = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError('');
+        setWargaDalamKK([]); // Reset data sebelumnya
+
+        if (!noKK) {
+            setError("Nomor KK tidak boleh kosong.");
+            setLoading(false);
+            return;
+        }
+
+        try {
+            const wargaCollectionRef = collection(db, 'warga');
+            // Query untuk mencari warga dengan nomor KK yang cocok
+            const q = query(wargaCollectionRef, where("kk", "==", noKK));
+            const querySnapshot = await getDocs(q); // Gunakan getDocs untuk mendapatkan data saat ini
+
+            if (querySnapshot.empty) {
+                setError(`Tidak ditemukan data warga untuk No. KK: ${noKK}`);
+            } else {
+                const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // Urutkan anggota keluarga agar Kepala Keluarga muncul pertama
+                data.sort((a, b) => {
+                    if (a.statusHubungan === "Kepala Keluarga") return -1;
+                    if (b.statusHubungan === "Kepala Keluarga") return 1;
+                    return 0;
+                });
+                setWargaDalamKK(data);
+                await createLog(userProfile.email, `Mencari Kartu Keluarga dengan No. KK: ${noKK}`);
+            }
+        } catch (err) {
+            console.error("Error searching KK:", err);
+            setError("Terjadi kesalahan saat mencari data Kartu Keluarga.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const downloadPDF = async () => {
+        if (wargaDalamKK.length === 0) {
+            setError("Tidak ada data Kartu Keluarga untuk diunduh.");
+            return;
+        }
+        
+        if (kkViewerRef.current) {
+            // Menggunakan html2canvas untuk menangkap tampilan KK sebagai gambar
+            const canvas = await html2canvas(kkViewerRef.current, { scale: 2 }); // Scale untuk kualitas lebih baik
+            const imgData = canvas.toDataURL('image/jpeg', 1.0); // Kualitas 1.0
+
+            const pdf = new jsPDF('landscape', 'mm', 'a4'); // Buat PDF A4 lanskap
+            const imgWidth = 280; // Lebar gambar di PDF (mendekati lebar A4 lanskap)
+            const imgHeight = (canvas.height * imgWidth) / canvas.width; // Hitung tinggi proporsional
+
+            // Tambahkan gambar ke PDF
+            pdf.addImage(imgData, 'JPEG', 10, 10, imgWidth, imgHeight); // Posisi (x, y, width, height)
+            pdf.save(`Kartu_Keluarga_${noKK}.pdf`);
+            await createLog(userProfile.email, `Mengunduh PDF Kartu Keluarga No. KK: ${noKK}`);
+        } else {
+            setError("Elemen Kartu Keluarga tidak ditemukan untuk diunduh.");
+        }
+    };
+
+    const downloadJPG = async () => {
+        if (wargaDalamKK.length === 0) {
+            setError("Tidak ada data Kartu Keluarga untuk diunduh.");
+            return;
+        }
+
+        if (kkViewerRef.current) {
+            const canvas = await html2canvas(kkViewerRef.current, { scale: 2 });
+            const imgData = canvas.toDataURL('image/jpeg', 1.0);
+
+            const link = document.createElement('a');
+            link.href = imgData;
+            link.download = `Kartu_Keluarga_${noKK}.jpg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            await createLog(userProfile.email, `Mengunduh JPG Kartu Keluarga No. KK: ${noKK}`);
+        } else {
+            setError("Elemen Kartu Keluarga tidak ditemukan untuk diunduh.");
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            <h2 className="text-3xl font-bold text-gray-800">Cetak Kartu Keluarga</h2>
+            <div className="bg-white p-6 rounded-xl shadow-md">
+                <form onSubmit={handleSearchKK} className="flex flex-col md:flex-row gap-4 items-center">
+                    <InputField 
+                        label="Nomor Kartu Keluarga (KK)" 
+                        name="noKK" 
+                        value={noKK} 
+                        onChange={(e) => setNoKK(e.target.value)} 
+                        placeholder="Masukkan Nomor KK" 
+                        required 
+                        className="flex-grow"
+                    />
+                    <button 
+                        type="submit" 
+                        disabled={loading}
+                        className="bg-blue-500 text-white px-6 py-2 rounded-lg shadow hover:bg-blue-600 disabled:bg-blue-300"
+                    >
+                        {loading ? 'Mencari...' : 'Cari KK'}
+                    </button>
+                </form>
+                {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
+            </div>
+
+            {wargaDalamKK.length > 0 && (
+                <div className="bg-white p-6 rounded-xl shadow-md">
+                    <div className="flex justify-end gap-2 mb-4">
+                        <button onClick={downloadPDF} className="flex items-center space-x-2 bg-red-600 text-white px-3 py-2 text-sm rounded-lg shadow hover:bg-red-700 transition-colors">
+                            <PdfIcon />
+                            <span>Unduh PDF</span>
+                        </button>
+                        <button onClick={downloadJPG} className="flex items-center space-x-2 bg-purple-600 text-white px-3 py-2 text-sm rounded-lg shadow hover:bg-purple-700 transition-colors">
+                            <ExportIcon /> {/* Menggunakan ExportIcon sebagai placeholder untuk JPG */}
+                            <span>Unduh JPG</span>
+                        </button>
+                    </div>
+                    {/* Render KartuKeluargaviewer dan attach ref */}
+                    <div ref={kkViewerRef} className="border p-4 rounded-md overflow-x-auto">
+                        <KartuKeluargaviewer dataKK={wargaDalamKK} noKK={noKK} headerData={headerData} />
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// --- KOMPONEN HALAMAN LAINNYA (sama seperti sebelumnya) ---
 function Dashboard({ userProfile }) {
     const [wargaList, setWargaList] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -633,8 +787,7 @@ function DataWarga({ userProfile }) {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [deletingId, setDeletingId] = useState(null);
     const [filters, setFilters] = useState({
-        nama: '', nik: '', kk: '', jenisKelamin: 'semua', statusPernikahan: 'semua', rt: 'semua', rw: 'semua',
-        kelurahan: 'semua', kecamatan: 'semua', kabupatenKota: 'semua', provinsi: 'semua', // Filter tambahan
+        nama: '', nik: '', kk: '', jenisKelamin: 'semua', statusPernikahan: 'semua', rt: 'semua', rw: 'semua'
     });
     useEffect(() => {
         if (!userProfile) return;
@@ -660,10 +813,6 @@ function DataWarga({ userProfile }) {
         if (userProfile.role === 'superadmin') {
             if (filters.rt !== 'semua') data = data.filter(w => w.rt === filters.rt);
             if (filters.rw !== 'semua') data = data.filter(w => w.rw === filters.rw);
-            if (filters.kelurahan !== 'semua') data = data.filter(w => w.kelurahan === filters.kelurahan); // Filter kelurahan
-            if (filters.kecamatan !== 'semua') data = data.filter(w => w.kecamatan === filters.kecamatan); // Filter kecamatan
-            if (filters.kabupatenKota !== 'semua') data = data.filter(w => w.kabupatenKota === filters.kabupatenKota); // Filter kabupaten/kota
-            if (filters.provinsi !== 'semua') data = data.filter(w => w.provinsi === filters.provinsi); // Filter provinsi
         }
         setFilteredWarga(data);
     }, [filters, wargaList, userProfile]);
@@ -723,14 +872,9 @@ function DataWarga({ userProfile }) {
             'Alamat': w.alamat, 
             'RT': w.rt, 
             'RW': w.rw,
-            'Kelurahan': w.kelurahan, 
-            'Kecamatan': w.kecamatan, 
-            'Kabupaten/Kota': w.kabupatenKota, 
-            'Provinsi': w.provinsi, 
-            'Kode Pos': w.kodePos, 
             'Status Tinggal': w.statusTinggal,
             'Kewarganegaraan': w.kewarganegaraan,
-            'URL Foto': w.photoURL || '', 
+            'URL Foto': w.photoUrl || '' // Tambahkan URL Foto
         }));
         const worksheet = XLSX.utils.json_to_sheet(dataToExport);
         const workbook = XLSX.utils.book_new();
@@ -744,112 +888,63 @@ function DataWarga({ userProfile }) {
             setInfoModalMessage("Tidak ada data untuk dibagikan. Silakan filter data terlebih dahulu.");
             return;
         }
-        
-        // Dapatkan data pengaturan dari localStorage
-        const namaKelurahanSetting = localStorage.getItem('namaKelurahan') || 'Kelurahan Anda';
-        const namaKecamatanSetting = localStorage.getItem('namaKecamatan') || 'Kecamatan Anda';
-        const kabupatenKotaSetting = localStorage.getItem('kabupatenKota') || 'Kabupaten/Kota Anda';
-        const provinsiSetting = localStorage.getItem('provinsi') || 'Provinsi Anda';
 
-        // Hanya ambil data warga pertama untuk simulasi kartu KTP
+        // Generate KTP-like card text for the first filtered resident
         const wargaToShare = filteredWarga[0]; 
-        
-        // Format tanggal lahir dan tanggal perkawinan jika ada
-        const tglLahirFormatted = wargaToShare.tanggalLahir ? new Date(wargaToShare.tanggalLahir).toLocaleDateString('id-ID', {day: '2-digit', month: 'long', year: 'numeric'}) : '-';
-        const tglKawinFormatted = wargaToShare.tanggalPerkawinan ? new Date(wargaToShare.tanggalPerkawinan).toLocaleDateString('id-ID', {day: '2-digit', month: 'long', year: 'numeric'}) : '-';
-
         let cardText = `
 *--- KARTU TANDA PENDUDUK ---*
-🇮🇩 _${provinsiSetting.toUpperCase()}_
-🏛️ _${kabupatenKotaSetting.toUpperCase()}_
 ➖➖➖➖➖➖➖➖➖➖➖➖
-*NIK* : ${wargaToShare.nik || '-'}
-*Nama* : ${wargaToShare.nama || '-'}
-*Tempat/Tgl Lahir* : ${wargaToShare.tempatLahir || '-'}, ${tglLahirFormatted}
-*Jenis Kelamin* : ${wargaToShare.jenisKelamin || '-'}
-*Gol. Darah* : ${wargaToShare.golonganDarah || '-'}
-*Alamat* : ${wargaToShare.alamat || '-'}
-  *RT/RW* : ${wargaToShare.rt || '-'}/${wargaToShare.rw || '-'}
-  *Kel/Desa* : ${wargaToShare.kelurahan || namaKelurahanSetting}
-  *Kecamatan* : ${wargaToShare.kecamatan || namaKecamatanSetting}
-*Agama* : ${wargaToShare.agama || '-'}
-*Status Perkawinan* : ${wargaToShare.statusPernikahan || '-'}
-*Tgl. Perkawinan* : ${tglKawinFormatted}
-*Pekerjaan* : ${wargaToShare.pekerjaan || '-'}
-*Pendidikan* : ${wargaToShare.pendidikan || '-'}
-*Status Hubungan Keluarga* : ${wargaToShare.statusHubungan || '-'}
-*Nama Ayah* : ${wargaToShare.namaAyah || '-'}
-*Nama Ibu* : ${wargaToShare.namaIbu || '-'}
-*Kewarganegaraan* : ${wargaToShare.kewarganegaraan || '-'}
-${wargaToShare.photoURL ? `\n*URL Foto*: ${wargaToShare.photoURL}` : ''}
+*NIK*: ${wargaToShare.nik || '-'}
+*Nama*: ${wargaToShare.nama || '-'}
+*Tempat/Tgl Lahir*: ${wargaToShare.tempatLahir || '-'}, ${wargaToShare.tanggalLahir || '-'}
+*Jenis Kelamin*: ${wargaToShare.jenisKelamin || '-'}
+*Gol. Darah*: ${wargaToShare.golonganDarah || '-'}
+*Alamat*: ${wargaToShare.alamat || '-'}
+  *RT/RW*: ${wargaToShare.rt || '-'}/${wargaToShare.rw || '-'}
+*Agama*: ${wargaToShare.agama || '-'}
+*Status Perkawinan*: ${wargaToShare.statusPernikahan || '-'}
+*Tgl. Perkawinan*: ${wargaToShare.tanggalPerkawinan || '-'}
+*Pekerjaan*: ${wargaToShare.pekerjaan || '-'}
+*Pendidikan*: ${wargaToShare.pendidikan || '-'}
+*Status Hubungan*: ${wargaToShare.statusHubungan || '-'}
+*Nama Ayah*: ${wargaToShare.namaAyah || '-'}
+*Nama Ibu*: ${wargaToShare.namaIbu || '-'}
+*Kewarganegaraan*: ${wargaToShare.kewarganegaraan || '-'}
 ➖➖➖➖➖➖➖➖➖➖➖➖
         `;
         
         if (filteredWarga.length > 1) {
-            cardText += `\n_Terdapat ${filteredWarga.length - 1} data warga lain. Silakan unduh PDF untuk detail lengkap._`;
+            cardText += `\n*...dan ${filteredWarga.length - 1} data warga lainnya. Silakan unduh PDF untuk detail lengkap.*`;
         }
+
 
         const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(cardText)}`;
         window.open(whatsappUrl, '_blank');
         createLog(userProfile.email, `Membagikan laporan ${filteredWarga.length} warga via WhatsApp.`);
     };
     
-    const handleDownloadPdf = async () => { // Make it async to handle image loading
+    const handleDownloadPdf = () => {
         if (filteredWarga.length === 0) {
             setInfoModalMessage("Tidak ada data untuk diunduh. Silakan filter data terlebih dahulu.");
             return;
         }
 
-        const doc = new jsPDF('landscape'); // Gunakan landscape untuk tabel yang lebih lebar
-
-        // Dapatkan data pengaturan dari localStorage
-        const namaKelurahanSetting = localStorage.getItem('namaKelurahan') || 'Kelurahan Anda';
-        const alamatKelurahanSetting = localStorage.getItem('alamatKelurahan') || 'Alamat kelurahan belum diatur';
-        const namaKecamatanSetting = localStorage.getItem('namaKecamatan') || 'Kecamatan Anda';
-        const kabupatenKotaSetting = localStorage.getItem('kabupatenKota') || 'Kabupaten/Kota Anda';
-        const provinsiSetting = localStorage.getItem('provinsi') || 'Provinsi Anda';
-        const kodePosSetting = localStorage.getItem('kodePos') || '';
-
-        // Header Laporan
-        doc.setFontSize(16);
-        doc.text("LAPORAN DATA PENDUDUK", doc.internal.pageSize.width / 2, 10, { align: 'center' });
-        doc.setFontSize(12);
-        doc.text(`${namaKelurahanSetting.toUpperCase()}`, doc.internal.pageSize.width / 2, 17, { align: 'center' });
+        const doc = new jsPDF('landscape'); // Menggunakan format lanskap untuk tabel yang lebih lebar
+        doc.setFontSize(14);
+        doc.text("Laporan Data Warga", 14, 16);
         doc.setFontSize(10);
-        doc.text(`${alamatKelurahanSetting}, KEC. ${namaKecamatanSetting.toUpperCase()}, ${kabupatenKotaSetting.toUpperCase()}`, doc.internal.pageSize.width / 2, 22, { align: 'center' });
-        doc.text(`${provinsiSetting.toUpperCase()} ${kodePosSetting ? `, KODE POS ${kodePosSetting}` : ''}`, doc.internal.pageSize.width / 2, 27, { align: 'center' });
-        
-        doc.setFontSize(10);
-        doc.text(`Total Warga: ${filteredWarga.length}`, 14, 35);
+        doc.text(`Total: ${filteredWarga.length} warga`, 14, 22);
         
         const tableColumn = [
-            "No", "Nama", "NIK", "KK", "Tpt/Tgl Lahir", "Tgl Kawin", "JK", 
-            "Agama", "Pend", "Kerja", "Sts Nikah", "Sts Hub", 
-            "Gol Darah", "Ayah", "Ibu", "Alamat", "RT/RW", "Kel", "Kec", 
-            "Kab/Kota", "Prov", "Pos", "Sts Tinggal", "WNA", "Foto"
+            "No", "Nama", "NIK", "No KK", "Tpt/Tgl Lahir", "Tgl Kawin", "JK", 
+            "Agama", "Pend", "Pekerjaan", "Sts Nikah", "Sts Hubungan", 
+            "Gol Darah", "Ayah", "Ibu", "Alamat", "RT/RW", "Sts Tinggal", "Warganegara", "Foto"
         ];
-
         const tableRows = [];
 
-        for (const warga of filteredWarga) {
-            let imageData = '';
-            if (warga.photoURL) {
-                try {
-                    const response = await fetch(warga.photoURL);
-                    const blob = await response.blob();
-                    imageData = await new Promise((resolve) => {
-                        const reader = new FileReader();
-                        reader.onloadend = () => resolve(reader.result);
-                        reader.readAsDataURL(blob);
-                    });
-                } catch (error) {
-                    console.error("Error loading image for PDF:", error);
-                    imageData = '';
-                }
-            }
-
+        filteredWarga.forEach((warga, index) => {
             const wargaData = [
-                filteredWarga.indexOf(warga) + 1,
+                index + 1,
                 warga.nama || '',
                 warga.nik || '',
                 warga.kk || '',
@@ -866,58 +961,45 @@ ${wargaToShare.photoURL ? `\n*URL Foto*: ${wargaToShare.photoURL}` : ''}
                 warga.namaIbu || '',
                 warga.alamat || '',
                 `${warga.rt || ''}/${warga.rw || ''}`,
-                warga.kelurahan || '',
-                warga.kecamatan || '',
-                warga.kabupatenKota || '',
-                warga.provinsi || '',
-                warga.kodePos || '',
                 warga.statusTinggal || '',
                 warga.kewarganegaraan || '',
-                { content: '', image: imageData, styles: { cellWidth: 15, cellHeight: 15 } }
+                // Untuk foto di PDF, ini akan menjadi teks URL atau indikasi, bukan gambar langsung di tabel.
+                // Jika ingin gambar, Anda perlu membuat laporan detail per warga atau menempatkannya di luar tabel.
+                warga.photoUrl ? 'Lihat Foto' : '-' 
             ];
             tableRows.push(wargaData);
-        }
-
+        });
         autoTable(doc, {
             head: [tableColumn],
             body: tableRows,
-            startY: 40,
-            theme: 'grid',
-            styles: { fontSize: 6, cellPadding: 1, overflow: 'linebreak' },
+            startY: 28,
+            theme: 'striped',
+            styles: { fontSize: 6, cellPadding: 1, overflow: 'linebreak' }, // Ukuran font dan padding lebih kecil
             headStyles: { fillColor: [200, 200, 200], textColor: [0, 0, 0], fontStyle: 'bold' },
             columnStyles: {
                 0: { cellWidth: 8 },  // No
                 1: { cellWidth: 25 }, // Nama
                 2: { cellWidth: 20 }, // NIK
-                3: { cellWidth: 20 }, // KK
-                4: { cellWidth: 25 }, // Tpt/Tgl Lahir
+                3: { cellWidth: 20 }, // No KK
+                4: { cellWidth: 25 }, // Tempat/Tgl Lahir
                 5: { cellWidth: 15 }, // Tgl Kawin
                 6: { cellWidth: 10 }, // JK
                 7: { cellWidth: 15 }, // Agama
                 8: { cellWidth: 15 }, // Pend
                 9: { cellWidth: 20 }, // Pekerjaan
                 10: { cellWidth: 15 },// Sts Nikah
-                11: { cellWidth: 15 },// Sts Hub
+                11: { cellWidth: 15 },// Sts Hubungan
                 12: { cellWidth: 10 },// Gol Darah
                 13: { cellWidth: 20 },// Ayah
                 14: { cellWidth: 20 },// Ibu
                 15: { cellWidth: 30 },// Alamat
                 16: { cellWidth: 10 },// RT/RW
-                17: { cellWidth: 15 },// Kel
-                18: { cellWidth: 15 },// Kec
-                19: { cellWidth: 20 },// Kab/Kota
-                20: { cellWidth: 15 },// Prov
-                21: { cellWidth: 10 },// Pos
-                22: { cellWidth: 15 },// Sts Tinggal
-                23: { cellWidth: 10 },// WNA
-                24: { cellWidth: 15, cellHeight: 15 }, // Foto
-            },
-            didDrawCell: (data) => {
-                if (data.column.index === 24 && data.cell.raw && data.cell.raw.image) {
-                    doc.addImage(data.cell.raw.image, 'JPEG', data.cell.x + 1, data.cell.y + 1, data.cell.raw.styles.cellWidth - 2, data.cell.raw.styles.cellHeight - 2);
-                }
+                17: { cellWidth: 15 },// Sts Tinggal
+                18: { cellWidth: 15 },// Warganegara
+                19: { cellWidth: 15 },// Foto (indikasi URL)
             }
         });
+
         doc.save("laporan_warga.pdf");
         createLog(userProfile.email, `Mengunduh laporan PDF berisi ${filteredWarga.length} data warga.`);
     };
@@ -1000,17 +1082,22 @@ border rounded-lg focus:ring-blue-500 focus:border-blue-500" />
                 <input type="text" name="kk" placeholder="Cari No. KK..." value={filters.kk} onChange={onFilterChange} className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500" />
                 {userProfile.role === 'superadmin' && (
                     <>
-                        <SelectField label="Filter RT" name="rt" value={filters.rt} onChange={onFilterChange} options={['semua', ...OPSI.rt]} />
-                        <SelectField label="Filter RW" name="rw" value={filters.rw} onChange={onFilterChange} options={['semua', ...OPSI.rw]} />
+                        <select name="rt" 
+value={filters.rt} onChange={onFilterChange} className="w-full p-2 border rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
+                            <option value="semua">Semua RT</option>{OPSI.rt.map(rt => <option key={rt} value={rt}>{rt}</option>)}
+                        </select>
+                        <select name="rw" value={filters.rw} onChange={onFilterChange} className="w-full p-2 border rounded-lg bg-white focus:ring-blue-500 
+focus:border-blue-500">
+                            <option value="semua">Semua RW</option>{OPSI.rw.map(rw => <option key={rw} value={rw}>{rw}</option>)}
+                        </select>
                     </>
                 )}
-                <SelectField label="Filter Jenis Kelamin" name="jenisKelamin" value={filters.jenisKelamin} onChange={onFilterChange} options={['semua', ...OPSI.jenisKelamin]} />
-                <SelectField label="Filter Status Pernikahan" name="statusPernikahan" value={filters.statusPernikahan} onChange={onFilterChange} options={['semua', ...OPSI.statusPernikahan]} />
-                {/* Filter tambahan untuk kolom lokasi baru */}
-                <SelectField label="Filter Kelurahan" name="kelurahan" value={filters.kelurahan} onChange={onFilterChange} options={['semua', ...OPSI.kelurahan]} />
-                <SelectField label="Filter Kecamatan" name="kecamatan" value={filters.kecamatan} onChange={onFilterChange} options={['semua', ...OPSI.kecamatan]} />
-                <SelectField label="Filter Kab/Kota" name="kabupatenKota" value={filters.kabupatenKota} onChange={onFilterChange} options={['semua', ...OPSI.kabupatenKota]} />
-                <SelectField label="Filter Provinsi" name="provinsi" value={filters.provinsi} onChange={onFilterChange} options={['semua', ...OPSI.provinsi]} />
+                <select name="jenisKelamin" value={filters.jenisKelamin} onChange={onFilterChange} className="w-full p-2 border rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
+                    <option value="semua">Semua Jenis Kelamin</option>{OPSI.jenisKelamin.map(jk => <option key={jk} value={jk}>{jk}</option>)}
+                </select>
+                <select name="statusPernikahan" value={filters.statusPernikahan} onChange={onFilterChange} className="w-full p-2 border rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
+                    <option value="semua">Semua Status Pernikahan</option>{OPSI.statusPernikahan.map(sp => <option key={sp} value={sp}>{sp}</option>)}
+                </select>
             </div>
         </div>
     );
@@ -1018,9 +1105,9 @@ border rounded-lg focus:ring-blue-500 focus:border-blue-500" />
 
 function WargaModal({ isOpen, onClose, wargaData, userProfile }) {
     const [formData, setFormData] = useState({});
+    const [selectedPhoto, setSelectedPhoto] = useState(null); // State untuk file foto yang dipilih
+    const [photoPreview, setPhotoPreview] = useState(''); // State untuk preview foto
     const [submitting, setSubmitting] = useState(false);
-    const [selectedImage, setSelectedImage] = useState(null); // State untuk file gambar yang dipilih
-    const [imageUrl, setImageUrl] = useState(''); // State untuk URL gambar setelah diunggah
 
     useEffect(() => {
         const defaultRt = userProfile?.role === 'operator' ? userProfile.rt : OPSI.rt[0];
@@ -1030,14 +1117,16 @@ function WargaModal({ isOpen, onClose, wargaData, userProfile }) {
             agama: OPSI.agama[0], pekerjaan: '', pendidikan: OPSI.pendidikan[0],
             alamat: '', rt: defaultRt, rw: OPSI.rw[0], statusTinggal: OPSI.statusTinggal[0], 
             kewarganegaraan: 'WNI', statusHubungan: OPSI.statusHubungan[0],
-            golonganDarah: OPSI.golonganDarah[0], namaAyah: '', namaIbu: '',
-            kelurahan: OPSI.kelurahan[0], kecamatan: OPSI.kecamatan[0], 
-            kabupatenKota: OPSI.kabupatenKota[0], provinsi: OPSI.provinsi[0], kodePos: '',
-            photoURL: '', // Tambah field untuk URL foto
+            golonganDarah: OPSI.golonganDarah[0], namaAyah: '', namaIbu: '', photoUrl: '' // Tambahkan photoUrl
         };
         setFormData(wargaData || initialData);
-        setImageUrl(wargaData?.photoURL || ''); // Set URL gambar jika ada data warga yang diedit
-        setSelectedImage(null); // Reset selected image when modal opens/changes wargaData
+        // Set photo preview if editing existing data with a photo
+        if (wargaData?.photoUrl) {
+            setPhotoPreview(wargaData.photoUrl);
+        } else {
+            setPhotoPreview('');
+        }
+        setSelectedPhoto(null); // Reset selected file on modal open/data change
     }, [wargaData, userProfile]);
 
     const handleChange = (e) => {
@@ -1045,42 +1134,52 @@ function WargaModal({ isOpen, onClose, wargaData, userProfile }) {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleImageChange = (e) => {
-        if (e.target.files[0]) {
-            setSelectedImage(e.target.files[0]);
-            setImageUrl(URL.createObjectURL(e.target.files[0])); // Preview image
+    const handlePhotoChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setSelectedPhoto(file);
+            setPhotoPreview(URL.createObjectURL(file)); // Create a preview URL
         } else {
-            setSelectedImage(null);
-            setImageUrl(wargaData?.photoURL || ''); // Revert to existing URL if any
+            setSelectedPhoto(null);
+            setPhotoPreview('');
         }
     };
 
-    const uploadImage = async () => {
-        if (!selectedImage) return '';
+    const uploadPhotoToCloudinary = async (file) => {
+        // Ini adalah bagian konseptual. Anda perlu mengganti ini dengan implementasi
+        // nyata untuk mengunggah gambar ke Cloudinary.
+        // Contoh: Menggunakan Fetch API atau Cloudinary SDK
+        const cloudName = localStorage.getItem('cloudinaryCloudName');
+        const uploadPreset = localStorage.getItem('cloudinaryUploadPreset');
 
-        const cloudinaryCloudName = localStorage.getItem('cloudinaryCloudName');
-        const cloudinaryUploadPreset = localStorage.getItem('cloudinaryUploadPreset');
-
-        if (!cloudinaryCloudName || !cloudinaryUploadPreset) {
-            alert('Konfigurasi Cloudinary belum lengkap di halaman Pengaturan!');
-            return '';
+        if (!cloudName || !uploadPreset) {
+            console.error("Cloudinary credentials are not set in localStorage.");
+            alert("Pengaturan Cloudinary belum lengkap. Harap lengkapi di halaman Pengaturan.");
+            return null;
         }
 
-        const data = new FormData();
-        data.append('file', selectedImage);
-        data.append('upload_preset', cloudinaryUploadPreset);
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', uploadPreset);
 
         try {
-            const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/image/upload`, {
+            const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
                 method: 'POST',
-                body: data,
+                body: formData,
             });
-            const file = await res.json();
-            return file.secure_url;
+            const data = await response.json();
+            if (data.secure_url) {
+                console.log("Photo uploaded to Cloudinary:", data.secure_url);
+                return data.secure_url;
+            } else {
+                console.error("Cloudinary upload error:", data);
+                alert("Gagal mengunggah foto ke Cloudinary.");
+                return null;
+            }
         } catch (error) {
-            console.error("Error uploading image to Cloudinary:", error);
-            alert("Gagal mengunggah foto ke Cloudinary.");
-            return '';
+            console.error("Error during Cloudinary upload:", error);
+            alert("Terjadi kesalahan saat mengunggah foto. Periksa koneksi atau kredensial Cloudinary Anda.");
+            return null;
         }
     };
 
@@ -1088,33 +1187,28 @@ function WargaModal({ isOpen, onClose, wargaData, userProfile }) {
         e.preventDefault();
         setSubmitting(true);
         try {
-            let finalPhotoURL = formData.photoURL;
-            if (selectedImage) {
-                finalPhotoURL = await uploadImage();
-                if (!finalPhotoURL) { // If upload failed, stop submission
+            let finalPhotoUrl = formData.photoUrl; // Gunakan URL yang sudah ada jika tidak ada foto baru
+            if (selectedPhoto) {
+                finalPhotoUrl = await uploadPhotoToCloudinary(selectedPhoto);
+                if (!finalPhotoUrl) {
                     setSubmitting(false);
-                    return;
+                    return; // Gagal upload, batalkan simpan
                 }
-            } else if (wargaData && !wargaData.photoURL && !imageUrl) {
-                 // If no new image and no existing image, and imageUrl was cleared by user
-                finalPhotoURL = ''; 
             }
-            
-            const dataToSave = { ...formData, photoURL: finalPhotoURL };
 
+            const updatedFormData = { ...formData, photoUrl: finalPhotoUrl };
             const wargaCollectionRef = collection(db, `warga`);
             if (wargaData?.id) {
                 const docRef = doc(db, `warga`, wargaData.id);
-                await updateDoc(docRef, dataToSave);
+                await updateDoc(docRef, updatedFormData);
                 await createLog(userProfile.email, `Memperbarui data warga: ${formData.nama}`);
             } else {
-                await addDoc(wargaCollectionRef, dataToSave);
+                await addDoc(wargaCollectionRef, updatedFormData);
                 await createLog(userProfile.email, `Menambah warga baru: ${formData.nama}`);
             }
             onClose();
         } catch (error) {
             console.error("Error saving document: ", error);
-            alert("Terjadi kesalahan saat menyimpan data warga.");
         } finally {
             setSubmitting(false);
         }
@@ -1148,36 +1242,28 @@ function WargaModal({ isOpen, onClose, wargaData, userProfile }) {
                         <InputField label="Alamat Lengkap" name="alamat" value={formData.alamat} onChange={handleChange} className="md:col-span-2" />
                         <SelectField label="RT" name="rt" value={formData.rt} onChange={handleChange} options={OPSI.rt} disabled={userProfile?.role === 'operator'} />
                         <SelectField label="RW" name="rw" value={formData.rw} onChange={handleChange} options={OPSI.rw} />
-                        <SelectField label="Kelurahan" name="kelurahan" value={formData.kelurahan} onChange={handleChange} options={OPSI.kelurahan} />
-                        <SelectField label="Kecamatan" name="kecamatan" value={formData.kecamatan} onChange={handleChange} options={OPSI.kecamatan} />
-                        <SelectField label="Kabupaten/Kota" name="kabupatenKota" value={formData.kabupatenKota} onChange={handleChange} options={OPSI.kabupatenKota} />
-                        <SelectField label="Provinsi" name="provinsi" value={formData.provinsi} onChange={handleChange} options={OPSI.provinsi} />
-                        <InputField label="Kode Pos" name="kodePos" value={formData.kodePos} onChange={handleChange} />
                         <SelectField label="Status Tempat Tinggal" name="statusTinggal" value={formData.statusTinggal} onChange={handleChange} options={OPSI.statusTinggal} />
                         <InputField label="Kewarganegaraan" name="kewarganegaraan" value={formData.kewarganegaraan} onChange={handleChange} />
                         
-                        {/* Input untuk foto */}
+                        {/* New Photo Upload Field */}
                         <div className="md:col-span-2">
                             <InputField 
-                                label="Foto Warga (Opsional)" 
+                                label="Unggah Foto (Opsional)" 
                                 name="photo" 
                                 type="file" 
-                                onChange={handleImageChange} 
+                                onChange={handlePhotoChange} 
                                 accept="image/*" 
                             />
-                            {imageUrl && (
+                            {photoPreview && (
                                 <div className="mt-2">
-                                    <img src={imageUrl} alt="Preview" className="max-w-xs h-auto rounded-lg shadow-md" />
-                                    <button 
-                                        type="button" 
-                                        onClick={() => { setSelectedImage(null); setImageUrl(''); }} 
-                                        className="text-red-500 text-sm mt-1 hover:underline"
-                                    >
-                                        Hapus Foto
-                                    </button>
+                                    <img src={photoPreview} alt="Pratinjau Foto" className="max-w-[150px] max-h-[150px] object-cover rounded-md shadow" />
                                 </div>
                             )}
+                            {formData.photoUrl && !selectedPhoto && (
+                                <p className="text-sm text-gray-500 mt-1">Foto saat ini: <a href={formData.photoUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Lihat</a></p>
+                            )}
                         </div>
+
                     </div>
                     <div className="flex justify-end pt-4 border-t mt-4">
                         <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg mr-2 hover:bg-gray-300">Batal</button>
@@ -1229,14 +1315,9 @@ function ImportModal({ isOpen, onClose, userProfile }) {
                         'Alamat': 'alamat', 
                         'RT': 'rt', 
                         'RW': 'rw',
-                        'Kelurahan': 'kelurahan', 
-                        'Kecamatan': 'kecamatan', 
-                        'Kabupaten/Kota': 'kabupatenKota', 
-                        'Provinsi': 'provinsi', 
-                        'Kode Pos': 'kodePos', 
                         'Status Tinggal': 'statusTinggal',
                         'Kewarganegaraan': 'kewarganegaraan',
-                        'URL Foto': 'photoURL', 
+                        'URL Foto': 'photoUrl', // Tambahkan pemetaan untuk URL Foto
                     };
                     const parsedData = jsonData.slice(1).map(row => {
                         let obj = {};
@@ -1297,7 +1378,7 @@ function ImportModal({ isOpen, onClose, userProfile }) {
                 <div className="p-6 space-y-4">
                     <div className="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 rounded">
                         <p className="font-bold">Petunjuk</p>
-                        <p className="text-sm">Pastikan file Excel Anda memiliki kolom header berikut di baris pertama: <br/> <code className="text-xs">Nama Lengkap, NIK, No KK, Tempat Lahir, Tanggal Lahir, Tanggal Perkawinan, Jenis Kelamin, Agama, Pendidikan, Pekerjaan, Status Pernikahan, Status Hubungan Keluarga, Golongan Darah, Nama Ayah, Nama Ibu, Alamat, RT, RW, Kelurahan, Kecamatan, Kabupaten/Kota, Provinsi, Kode Pos, Status Tinggal, Kewarganegaraan, URL Foto</code></p>
+                        <p className="text-sm">Pastikan file Excel Anda memiliki kolom header berikut di baris pertama: <br/> <code className="text-xs">Nama Lengkap, NIK, No KK, Tempat Lahir, Tanggal Lahir, Tanggal Perkawinan, Jenis Kelamin, Agama, Pendidikan, Pekerjaan, Status Pernikahan, Status Hubungan Keluarga, Golongan Darah, Nama Ayah, Nama Ibu, Alamat, RT, RW, Status Tinggal, Kewarganegaraan, URL Foto</code></p>
                     </div>
                     <InputField type="file" label="Pilih File Excel (.xlsx)" name="file" onChange={handleFileChange} accept=".xlsx, .xls" />
                     {error && <p className="text-red-500 text-sm">{error}</p>}
