@@ -55,7 +55,6 @@ const firebaseConfig = {
   messagingSenderId: "707474702116",
   appId: "1:707474702116:web:a428bd252f9072e0477db1"
 };
-
 const mainApp = initializeApp(firebaseConfig);
 const mainAuth = getAuth(mainApp);
 const db = getFirestore(mainApp);
@@ -75,8 +74,12 @@ const OPSI = {
     rt: Array.from({ length: 15 }, (_, i) => `00${i + 1}`.slice(-3)),
     rw: Array.from({ length: 5 }, (_, i) => `00${i + 1}`.slice(-3)),
     roles: ['superadmin', 'operator'],
-    statusHubungan: ["Kepala Keluarga", "Istri", "Anak", "Famili Lain"],
+    statusHubungan: ["Kepala Keluarga", "Istri", "Anak", "Famili Lain", "Lainnya"],
     golonganDarah: ["A", "B", "AB", "O", "Tidak Tahu"],
+    // New fields
+    kecamatan: ["Kecamatan A", "Kecamatan B", "Kecamatan C"], // Example values, populate as needed
+    kabupatenKota: ["Kabupaten X", "Kota Y", "Kabupaten Z"], // Example values
+    provinsi: ["Provinsi 1", "Provinsi 2", "Provinsi 3"], // Example values
 };
 
 // --- FUNGSI BANTU ---
@@ -119,6 +122,7 @@ export default function App() {
                 const userDocRef = doc(db, "users", user.uid);
                 const userDocSnap = await getDoc(userDocRef);
                 let profileData = null;
+    
                 if (userDocSnap.exists()) {
                     profileData = userDocSnap.data();
                 } else {
@@ -133,7 +137,6 @@ export default function App() {
         });
         return () => unsubscribe();
     }, []);
-
     if (authState.loading) {
         return <LoadingScreen text="Mengautentikasi..." />;
     }
@@ -190,7 +193,6 @@ function Sidebar({ user, userProfile, currentPage, setCurrentPage }) {
         { id: 'log-aktivitas', label: 'Log Aktivitas', icon: <ActivityIcon />, roles: ['superadmin'] },
         { id: 'pengaturan', label: 'Pengaturan', icon: <SettingsIcon />, roles: ['superadmin', 'operator'] },
     ];
-
     return (
         <nav className="bg-white border-r border-gray-200 w-full md:w-64 p-4 flex-shrink-0">
             <div className="flex flex-col items-center mb-8">
@@ -208,8 +210,8 @@ function Sidebar({ user, userProfile, currentPage, setCurrentPage }) {
                                 onClick={() => setCurrentPage(item.id)}
                                 className={`w-full flex items-center space-x-3 p-3 my-1 rounded-lg text-left transition-colors ${
                                     currentPage === item.id 
-                                    ? 'bg-blue-500 text-white shadow' 
-                                    : 'text-gray-600 hover:bg-gray-100'
+                                        ? 'bg-blue-500 text-white shadow' 
+                                        : 'text-gray-600 hover:bg-gray-100'
                                 }`}
                             >
                                 {item.icon}
@@ -237,6 +239,10 @@ function Pengaturan() {
     const [cloudinaryUploadPreset, setCloudinaryUploadPreset] = useState('');
     const [namaKelurahan, setNamaKelurahan] = useState('');
     const [alamatKelurahan, setAlamatKelurahan] = useState('');
+    const [namaKecamatan, setNamaKecamatan] = useState('');
+    const [kabupatenKota, setKabupatenKota] = useState('');
+    const [provinsi, setProvinsi] = useState('');
+    const [kodePos, setKodePos] = useState('');
     const [message, setMessage] = useState('');
 
     useEffect(() => {
@@ -244,10 +250,19 @@ function Pengaturan() {
         const savedUploadPreset = localStorage.getItem('cloudinaryUploadPreset');
         const savedNamaKelurahan = localStorage.getItem('namaKelurahan');
         const savedAlamatKelurahan = localStorage.getItem('alamatKelurahan');
+        const savedNamaKecamatan = localStorage.getItem('namaKecamatan');
+        const savedKabupatenKota = localStorage.getItem('kabupatenKota');
+        const savedProvinsi = localStorage.getItem('provinsi');
+        const savedKodePos = localStorage.getItem('kodePos');
+
         if (savedCloudName) setCloudinaryCloudName(savedCloudName);
         if (savedUploadPreset) setCloudinaryUploadPreset(savedUploadPreset);
         if (savedNamaKelurahan) setNamaKelurahan(savedNamaKelurahan);
         if (savedAlamatKelurahan) setAlamatKelurahan(savedAlamatKelurahan);
+        if (savedNamaKecamatan) setNamaKecamatan(savedNamaKecamatan);
+        if (savedKabupatenKota) setKabupatenKota(savedKabupatenKota);
+        if (savedProvinsi) setProvinsi(savedProvinsi);
+        if (savedKodePos) setKodePos(savedKodePos);
     }, []);
 
     const handleSave = () => {
@@ -255,6 +270,10 @@ function Pengaturan() {
         localStorage.setItem('cloudinaryUploadPreset', cloudinaryUploadPreset);
         localStorage.setItem('namaKelurahan', namaKelurahan);
         localStorage.setItem('alamatKelurahan', alamatKelurahan);
+        localStorage.setItem('namaKecamatan', namaKecamatan);
+        localStorage.setItem('kabupatenKota', kabupatenKota);
+        localStorage.setItem('provinsi', provinsi);
+        localStorage.setItem('kodePos', kodePos);
         setMessage('Pengaturan berhasil disimpan!');
         setTimeout(() => setMessage(''), 3000);
     };
@@ -268,6 +287,10 @@ function Pengaturan() {
                     <p className="text-sm text-gray-600 mb-4">Informasi ini akan ditampilkan di Dashboard dan setiap laporan PDF.</p>
                     <div className="space-y-4">
                         <InputField label="Nama Kelurahan / Desa" name="namaKelurahan" value={namaKelurahan} onChange={(e) => setNamaKelurahan(e.target.value)} placeholder="Contoh: Kelurahan Bahagia" />
+                        <InputField label="Nama Kecamatan" name="namaKecamatan" value={namaKecamatan} onChange={(e) => setNamaKecamatan(e.target.value)} placeholder="Contoh: Kecamatan Makmur" />
+                        <InputField label="Kabupaten/Kota" name="kabupatenKota" value={kabupatenKota} onChange={(e) => setKabupatenKota(e.target.value)} placeholder="Contoh: Kota Contoh" />
+                        <InputField label="Provinsi" name="provinsi" value={provinsi} onChange={(e) => setProvinsi(e.target.value)} placeholder="Contoh: Provinsi Impian" />
+                        <InputField label="Kode Pos" name="kodePos" value={kodePos} onChange={(e) => setKodePos(e.target.value)} placeholder="Contoh: 12345" />
                         <InputField label="Alamat" name="alamatKelurahan" value={alamatKelurahan} onChange={(e) => setAlamatKelurahan(e.target.value)} placeholder="Contoh: Jl. Raya Sejahtera No. 1, Kecamatan Makmur" />
                     </div>
                 </div>
@@ -317,7 +340,6 @@ function AktivitasLog() {
         });
         return () => unsubscribe();
     }, []);
-
     if (loading) return <LoadingScreen text="Memuat log aktivitas..." />;
 
     return (
@@ -355,7 +377,6 @@ function ManajemenUser({ userProfile }) {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-
     useEffect(() => {
         const usersCollectionRef = collection(db, "users");
         const q = query(usersCollectionRef);
@@ -374,7 +395,6 @@ function ManajemenUser({ userProfile }) {
     }
 
     if (loading) return <LoadingScreen text="Memuat data user..." />;
-
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -420,7 +440,6 @@ function AddUserModal({ isOpen, onClose, currentUserProfile }) {
     const [rt, setRt] = useState(OPSI.rt[0]);
     const [error, setError] = useState('');
     const [submitting, setSubmitting] = useState(false);
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
@@ -442,7 +461,6 @@ function AddUserModal({ isOpen, onClose, currentUserProfile }) {
             setSubmitting(false);
         }
     };
-
     if (!isOpen) return null;
 
     return (
@@ -478,12 +496,25 @@ function Dashboard({ userProfile }) {
     const [loading, setLoading] = useState(true);
     const [namaKelurahan, setNamaKelurahan] = useState('');
     const [alamatKelurahan, setAlamatKelurahan] = useState('');
+    const [namaKecamatan, setNamaKecamatan] = useState('');
+    const [kabupatenKota, setKabupatenKota] = useState('');
+    const [provinsi, setProvinsi] = useState('');
+    const [kodePos, setKodePos] = useState('');
 
     useEffect(() => {
         const savedNamaKelurahan = localStorage.getItem('namaKelurahan') || 'Kelurahan Anda';
         const savedAlamatKelurahan = localStorage.getItem('alamatKelurahan') || 'Alamat kelurahan belum diatur';
+        const savedNamaKecamatan = localStorage.getItem('namaKecamatan') || 'Kecamatan Anda';
+        const savedKabupatenKota = localStorage.getItem('kabupatenKota') || 'Kabupaten/Kota Anda';
+        const savedProvinsi = localStorage.getItem('provinsi') || 'Provinsi Anda';
+        const savedKodePos = localStorage.getItem('kodePos') || 'Kode Pos Anda';
+
         setNamaKelurahan(savedNamaKelurahan);
         setAlamatKelurahan(savedAlamatKelurahan);
+        setNamaKecamatan(savedNamaKecamatan);
+        setKabupatenKota(savedKabupatenKota);
+        setProvinsi(savedProvinsi);
+        setKodePos(savedKodePos);
 
         if (!userProfile) return;
         const wargaCollectionRef = collection(db, 'warga');
@@ -498,7 +529,6 @@ function Dashboard({ userProfile }) {
         });
         return () => unsubscribe();
     }, [userProfile]);
-
     const dashboardData = useMemo(() => {
         const totalWarga = wargaList.length;
         const totalKK = new Set(wargaList.map(w => w.kk)).size;
@@ -528,7 +558,6 @@ function Dashboard({ userProfile }) {
     }, [wargaList]);
 
     const GENDER_COLORS = ['#3b82f6', '#ec4899'];
-
     if (loading) return <LoadingScreen text="Memuat data dashboard..." />;
 
     return (
@@ -536,6 +565,7 @@ function Dashboard({ userProfile }) {
             <div className="bg-white p-4 rounded-lg shadow">
                 <h2 className="text-2xl font-bold text-gray-800">{namaKelurahan}</h2>
                 <p className="text-sm text-gray-500">{alamatKelurahan}</p>
+                <p className="text-sm text-gray-500">Kecamatan {namaKecamatan}, {kabupatenKota}, {provinsi} {kodePos}</p>
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -601,7 +631,6 @@ function DataWarga({ userProfile }) {
     const [filters, setFilters] = useState({
         nama: '', nik: '', kk: '', jenisKelamin: 'semua', statusPernikahan: 'semua', rt: 'semua', rw: 'semua'
     });
-
     useEffect(() => {
         if (!userProfile) return;
         const wargaCollectionRef = collection(db, 'warga');
@@ -616,7 +645,6 @@ function DataWarga({ userProfile }) {
         });
         return () => unsubscribe();
     }, [userProfile]);
-
     useEffect(() => {
         let data = [...wargaList];
         if (filters.nama) data = data.filter(w => w.nama?.toLowerCase().includes(filters.nama.toLowerCase()));
@@ -630,7 +658,6 @@ function DataWarga({ userProfile }) {
         }
         setFilteredWarga(data);
     }, [filters, wargaList, userProfile]);
-
     const handleFilterChange = (e) => {
         const { name, value } = e.target;
         setFilters(prev => ({ ...prev, [name]: value }));
@@ -645,7 +672,6 @@ function DataWarga({ userProfile }) {
         setEditingWarga(warga);
         setIsModalOpen(true);
     };
-
     const confirmDelete = async (id) => {
         const docRef = doc(db, "warga", id);
         const docSnap = await getDoc(docRef);
@@ -668,13 +694,28 @@ function DataWarga({ userProfile }) {
             }
         }
     };
-    
     const handleExport = () => {
         const dataToExport = filteredWarga.map(w => ({
-            'Nama Lengkap': w.nama, 'NIK': w.nik, 'No KK': w.kk, 'Tempat Lahir': w.tempatLahir,
-            'Tanggal Lahir': w.tanggalLahir, 'Jenis Kelamin': w.jenisKelamin, 'Agama': w.agama,
-            'Pendidikan': w.pendidikan, 'Pekerjaan': w.pekerjaan, 'Status Pernikahan': w.statusPernikahan,
-            'Alamat': w.alamat, 'RT': w.rt, 'RW': w.rw,
+            'Nama Lengkap': w.nama, 
+            'NIK': w.nik, 
+            'No KK': w.kk, 
+            'Tempat Lahir': w.tempatLahir,
+            'Tanggal Lahir': w.tanggalLahir, 
+            'Tanggal Perkawinan': w.tanggalPerkawinan,
+            'Jenis Kelamin': w.jenisKelamin, 
+            'Agama': w.agama,
+            'Pendidikan': w.pendidikan, 
+            'Pekerjaan': w.pekerjaan, 
+            'Status Pernikahan': w.statusPernikahan,
+            'Status Hubungan Keluarga': w.statusHubungan,
+            'Golongan Darah': w.golonganDarah,
+            'Nama Ayah': w.namaAyah,
+            'Nama Ibu': w.namaIbu,
+            'Alamat': w.alamat, 
+            'RT': w.rt, 
+            'RW': w.rw,
+            'Status Tinggal': w.statusTinggal,
+            'Kewarganegaraan': w.kewarganegaraan,
         }));
         const worksheet = XLSX.utils.json_to_sheet(dataToExport);
         const workbook = XLSX.utils.book_new();
@@ -709,11 +750,16 @@ function DataWarga({ userProfile }) {
         }
 
         const doc = new jsPDF();
+        doc.setFontSize(14);
         doc.text("Laporan Data Warga", 14, 16);
         doc.setFontSize(10);
         doc.text(`Total: ${filteredWarga.length} warga`, 14, 22);
         
-        const tableColumn = ["No", "Nama", "NIK", "No KK", "Jenis Kelamin", "Pekerjaan", "Pendidikan", "Status Nikah", "RT/RW"];
+        const tableColumn = [
+            "No", "Nama", "NIK", "No KK", "Tempat/Tgl Lahir", "Jenis Kelamin", 
+            "Agama", "Pendidikan", "Pekerjaan", "Status Nikah", "Status Hubungan", 
+            "Gol Darah", "Nama Ayah", "Nama Ibu", "Alamat", "RT/RW"
+        ];
         const tableRows = [];
 
         filteredWarga.forEach((warga, index) => {
@@ -722,27 +768,52 @@ function DataWarga({ userProfile }) {
                 warga.nama || '',
                 warga.nik || '',
                 warga.kk || '',
+                `${warga.tempatLahir || ''}, ${warga.tanggalLahir || ''}`,
                 warga.jenisKelamin || '',
-                warga.pekerjaan || '',
+                warga.agama || '',
                 warga.pendidikan || '',
+                warga.pekerjaan || '',
                 warga.statusPernikahan || '',
+                warga.statusHubungan || '',
+                warga.golonganDarah || '',
+                warga.namaAyah || '',
+                warga.namaIbu || '',
+                warga.alamat || '',
                 `${warga.rt || ''}/${warga.rw || ''}`
             ];
             tableRows.push(wargaData);
         });
-
         autoTable(doc, {
             head: [tableColumn],
             body: tableRows,
             startY: 28,
+            theme: 'striped',
+            styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
+            headStyles: { fillColor: [200, 200, 200], textColor: [0, 0, 0], fontStyle: 'bold' },
+            columnStyles: {
+                0: { cellWidth: 10 }, // No
+                1: { cellWidth: 30 }, // Nama
+                2: { cellWidth: 25 }, // NIK
+                3: { cellWidth: 25 }, // No KK
+                4: { cellWidth: 25 }, // Tempat/Tgl Lahir
+                5: { cellWidth: 20 }, // Jenis Kelamin
+                6: { cellWidth: 20 }, // Agama
+                7: { cellWidth: 25 }, // Pendidikan
+                8: { cellWidth: 20 }, // Pekerjaan
+                9: { cellWidth: 25 }, // Status Nikah
+                10: { cellWidth: 25 }, // Status Hubungan
+                11: { cellWidth: 20 }, // Golongan Darah
+                12: { cellWidth: 25 }, // Nama Ayah
+                13: { cellWidth: 25 }, // Nama Ibu
+                14: { cellWidth: 30 }, // Alamat
+                15: { cellWidth: 15 }, // RT/RW
+            }
         });
-        
         doc.save("laporan_warga.pdf");
         createLog(userProfile.email, `Mengunduh laporan PDF berisi ${filteredWarga.length} data warga.`);
     };
 
     if (loading) return <LoadingScreen text="Memuat data warga..." />;
-
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
@@ -752,6 +823,7 @@ function DataWarga({ userProfile }) {
                         <ImportIcon />
                         <span>Import</span>
                     </button>
+                    
                     <button onClick={handleExport} className="flex items-center space-x-2 bg-green-600 text-white px-3 py-2 text-sm rounded-lg shadow hover:bg-green-700 transition-colors">
                         <ExportIcon />
                         <span>Export</span>
@@ -802,7 +874,7 @@ function DataWarga({ userProfile }) {
             </div>
 
             {isModalOpen && <WargaModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} wargaData={editingWarga} userProfile={userProfile} />}
-            {isImportModalOpen && <ImportModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} userProfile={userProfile} />}
+            {isImportModalOpen && <ImportModal isOpen={isImportModalOpen} onClose={() => setIsImportModalFromModal(false)} userProfile={userProfile} />}
             {infoModalMessage && <InfoModal message={infoModalMessage} onClose={() => setInfoModalMessage('')} />}
             {showDeleteConfirm && <ConfirmModal onConfirm={handleDelete} onCancel={() => setShowDeleteConfirm(false)} message={`Apakah Anda yakin ingin menghapus data warga: ${deletingId?.nama}?`} />}
         </div>
@@ -813,25 +885,17 @@ function FilterSection({ filters, onFilterChange, userProfile }) {
     return (
         <div className="bg-white p-4 rounded-xl shadow-md">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <input type="text" name="nama" placeholder="Cari Nama..." value={filters.nama} onChange={onFilterChange} className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500" />
-                <input type="text" name="nik" placeholder="Cari NIK..." value={filters.nik} onChange={onFilterChange} className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500" />
-                <input type="text" name="kk" placeholder="Cari No. KK..." value={filters.kk} onChange={onFilterChange} className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                <InputField type="text" name="nama" placeholder="Cari Nama..." value={filters.nama} onChange={onFilterChange} />
+                <InputField type="text" name="nik" placeholder="Cari NIK..." value={filters.nik} onChange={onFilterChange} />
+                <InputField type="text" name="kk" placeholder="Cari No. KK..." value={filters.kk} onChange={onFilterChange} />
                 {userProfile.role === 'superadmin' && (
                     <>
-                        <select name="rt" value={filters.rt} onChange={onFilterChange} className="w-full p-2 border rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
-                            <option value="semua">Semua RT</option>{OPSI.rt.map(rt => <option key={rt} value={rt}>{rt}</option>)}
-                        </select>
-                        <select name="rw" value={filters.rw} onChange={onFilterChange} className="w-full p-2 border rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
-                            <option value="semua">Semua RW</option>{OPSI.rw.map(rw => <option key={rw} value={rw}>{rw}</option>)}
-                        </select>
+                        <SelectField name="rt" value={filters.rt} onChange={onFilterChange} options={['semua', ...OPSI.rt]} label="Semua RT" />
+                        <SelectField name="rw" value={filters.rw} onChange={onFilterChange} options={['semua', ...OPSI.rw]} label="Semua RW" />
                     </>
                 )}
-                <select name="jenisKelamin" value={filters.jenisKelamin} onChange={onFilterChange} className="w-full p-2 border rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
-                    <option value="semua">Semua Jenis Kelamin</option>{OPSI.jenisKelamin.map(jk => <option key={jk} value={jk}>{jk}</option>)}
-                </select>
-                <select name="statusPernikahan" value={filters.statusPernikahan} onChange={onFilterChange} className="w-full p-2 border rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
-                    <option value="semua">Semua Status Pernikahan</option>{OPSI.statusPernikahan.map(sp => <option key={sp} value={sp}>{sp}</option>)}
-                </select>
+                <SelectField name="jenisKelamin" value={filters.jenisKelamin} onChange={onFilterChange} options={['semua', ...OPSI.jenisKelamin]} label="Semua Jenis Kelamin" />
+                <SelectField name="statusPernikahan" value={filters.statusPernikahan} onChange={onFilterChange} options={['semua', ...OPSI.statusPernikahan]} label="Semua Status Pernikahan" />
             </div>
         </div>
     );
@@ -844,13 +908,15 @@ function WargaModal({ isOpen, onClose, wargaData, userProfile }) {
     useEffect(() => {
         const defaultRt = userProfile?.role === 'operator' ? userProfile.rt : OPSI.rt[0];
         const initialData = {
-            nama: '', nik: '', kk: '', tempatLahir: '', tanggalLahir: '', jenisKelamin: OPSI.jenisKelamin[0],
-            statusPernikahan: OPSI.statusPernikahan[0], agama: OPSI.agama[0], pekerjaan: '', pendidikan: OPSI.pendidikan[0],
-            alamat: '', rt: defaultRt, rw: OPSI.rw[0], statusTinggal: OPSI.statusTinggal[0], kewarganegaraan: 'WNI',
+            nama: '', nik: '', kk: '', tempatLahir: '', tanggalLahir: '', tanggalPerkawinan: '', 
+            jenisKelamin: OPSI.jenisKelamin[0], statusPernikahan: OPSI.statusPernikahan[0], 
+            agama: OPSI.agama[0], pekerjaan: '', pendidikan: OPSI.pendidikan[0],
+            alamat: '', rt: defaultRt, rw: OPSI.rw[0], statusTinggal: OPSI.statusTinggal[0], 
+            kewarganegaraan: 'WNI', statusHubungan: OPSI.statusHubungan[0],
+            golonganDarah: OPSI.golonganDarah[0], namaAyah: '', namaIbu: '',
         };
         setFormData(wargaData || initialData);
     }, [wargaData, userProfile]);
-
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
@@ -876,7 +942,6 @@ function WargaModal({ isOpen, onClose, wargaData, userProfile }) {
             setSubmitting(false);
         }
     };
-
     if (!isOpen) return null;
 
     return (
@@ -893,11 +958,16 @@ function WargaModal({ isOpen, onClose, wargaData, userProfile }) {
                         <InputField label="No. KK" name="kk" value={formData.kk} onChange={handleChange} required />
                         <InputField label="Tempat Lahir" name="tempatLahir" value={formData.tempatLahir} onChange={handleChange} />
                         <InputField label="Tanggal Lahir" name="tanggalLahir" type="date" value={formData.tanggalLahir} onChange={handleChange} />
+                        <InputField label="Tanggal Perkawinan" name="tanggalPerkawinan" type="date" value={formData.tanggalPerkawinan} onChange={handleChange} />
                         <SelectField label="Jenis Kelamin" name="jenisKelamin" value={formData.jenisKelamin} onChange={handleChange} options={OPSI.jenisKelamin} />
                         <SelectField label="Agama" name="agama" value={formData.agama} onChange={handleChange} options={OPSI.agama} />
                         <SelectField label="Status Pernikahan" name="statusPernikahan" value={formData.statusPernikahan} onChange={handleChange} options={OPSI.statusPernikahan} />
                         <SelectField label="Pendidikan Terakhir" name="pendidikan" value={formData.pendidikan} onChange={handleChange} options={OPSI.pendidikan} />
                         <InputField label="Pekerjaan" name="pekerjaan" value={formData.pekerjaan} onChange={handleChange} />
+                        <SelectField label="Status Hubungan Keluarga" name="statusHubungan" value={formData.statusHubungan} onChange={handleChange} options={OPSI.statusHubungan} />
+                        <SelectField label="Golongan Darah" name="golonganDarah" value={formData.golonganDarah} onChange={handleChange} options={OPSI.golonganDarah} />
+                        <InputField label="Nama Ayah" name="namaAyah" value={formData.namaAyah} onChange={handleChange} />
+                        <InputField label="Nama Ibu" name="namaIbu" value={formData.namaIbu} onChange={handleChange} />
                         <InputField label="Alamat Lengkap" name="alamat" value={formData.alamat} onChange={handleChange} className="md:col-span-2" />
                         <SelectField label="RT" name="rt" value={formData.rt} onChange={handleChange} options={OPSI.rt} disabled={userProfile?.role === 'operator'} />
                         <SelectField label="RW" name="rw" value={formData.rw} onChange={handleChange} options={OPSI.rw} />
@@ -921,7 +991,6 @@ function ImportModal({ isOpen, onClose, userProfile }) {
     const [data, setData] = useState([]);
     const [error, setError] = useState('');
     const [importing, setImporting] = useState(false);
-
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];
         if (selectedFile) {
@@ -937,12 +1006,27 @@ function ImportModal({ isOpen, onClose, userProfile }) {
                     
                     const headers = jsonData[0];
                     const headerMap = {
-                        'Nama Lengkap': 'nama', 'NIK': 'nik', 'No KK': 'kk', 'Tempat Lahir': 'tempatLahir',
-                        'Tanggal Lahir': 'tanggalLahir', 'Jenis Kelamin': 'jenisKelamin', 'Agama': 'agama',
-                        'Pendidikan': 'pendidikan', 'Pekerjaan': 'pekerjaan', 'Status Pernikahan': 'statusPernikahan',
-                        'Alamat': 'alamat', 'RT': 'rt', 'RW': 'rw',
+                        'Nama Lengkap': 'nama', 
+                        'NIK': 'nik', 
+                        'No KK': 'kk', 
+                        'Tempat Lahir': 'tempatLahir',
+                        'Tanggal Lahir': 'tanggalLahir', 
+                        'Tanggal Perkawinan': 'tanggalPerkawinan',
+                        'Jenis Kelamin': 'jenisKelamin', 
+                        'Agama': 'agama',
+                        'Pendidikan': 'pendidikan', 
+                        'Pekerjaan': 'pekerjaan', 
+                        'Status Pernikahan': 'statusPernikahan',
+                        'Status Hubungan Keluarga': 'statusHubungan',
+                        'Golongan Darah': 'golonganDarah',
+                        'Nama Ayah': 'namaAyah',
+                        'Nama Ibu': 'namaIbu',
+                        'Alamat': 'alamat', 
+                        'RT': 'rt', 
+                        'RW': 'rw',
+                        'Status Tinggal': 'statusTinggal',
+                        'Kewarganegaraan': 'kewarganegaraan',
                     };
-
                     const parsedData = jsonData.slice(1).map(row => {
                         let obj = {};
                         headers.forEach((header, index) => {
@@ -953,7 +1037,6 @@ function ImportModal({ isOpen, onClose, userProfile }) {
                         });
                         return obj;
                     });
-
                     setData(parsedData);
                 } catch (err) {
                     setError("Gagal memproses file. Pastikan format file Excel benar.");
@@ -963,7 +1046,6 @@ function ImportModal({ isOpen, onClose, userProfile }) {
             reader.readAsBinaryString(selectedFile);
         }
     };
-
     const handleImport = async () => {
         if (data.length === 0) {
             setError("Tidak ada data untuk diimpor.");
@@ -1004,7 +1086,7 @@ function ImportModal({ isOpen, onClose, userProfile }) {
                 <div className="p-6 space-y-4">
                     <div className="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 rounded">
                         <p className="font-bold">Petunjuk</p>
-                        <p className="text-sm">Pastikan file Excel Anda memiliki kolom header berikut di baris pertama: <br/> <code className="text-xs">Nama Lengkap, NIK, No KK, Tempat Lahir, Tanggal Lahir, Jenis Kelamin, Agama, Pendidikan, Pekerjaan, Status Pernikahan, Alamat, RT, RW</code></p>
+                        <p className="text-sm">Pastikan file Excel Anda memiliki kolom header berikut di baris pertama: <br/> <code className="text-xs">Nama Lengkap, NIK, No KK, Tempat Lahir, Tanggal Lahir, Tanggal Perkawinan, Jenis Kelamin, Agama, Pendidikan, Pekerjaan, Status Pernikahan, Status Hubungan Keluarga, Golongan Darah, Nama Ayah, Nama Ibu, Alamat, RT, RW, Status Tinggal, Kewarganegaraan</code></p>
                     </div>
                     <InputField type="file" label="Pilih File Excel (.xlsx)" name="file" onChange={handleFileChange} accept=".xlsx, .xls" />
                     {error && <p className="text-red-500 text-sm">{error}</p>}
@@ -1094,7 +1176,6 @@ function LoginScreen() {
     const [isLogin, setIsLogin] = useState(true);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
@@ -1111,7 +1192,6 @@ function LoginScreen() {
             setLoading(false);
         }
     };
-
     return (
         <div className="min-h-screen bg-gray-100 flex flex-col justify-center items-center p-4">
             <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-lg">
