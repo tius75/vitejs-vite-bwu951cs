@@ -17,7 +17,7 @@ import {
     deleteDoc,
     setDoc,
     getDoc, 
-    getDocs, // Diperlukan untuk mengambil data dari query
+    getDocs, 
     query,
     where,
     orderBy,
@@ -41,7 +41,7 @@ const HomeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height
 const DatabaseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>;
 const LogoutIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>;
 const PlusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
-const EditIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>;
+const EditIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>;
 const TrashIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>;
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
 const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
@@ -83,7 +83,7 @@ const OPSI = {
     statusHubungan: ["Kepala Keluarga", "Istri", "Anak", "Famili Lain", "Lainnya"],
     golonganDarah: ["A", "B", "AB", "O", "Tidak Tahu"],
     // New fields: Provinsi, Kecamatan, Kelurahan
-    provinsi: ["DKI Jakarta"], // Hanya Jakarta Timur untuk contoh ini ada di DKI Jakarta
+    provinsi: ["DKI Jakarta"], 
     kecamatan: { 
         "Cipayung": ["Bambu Apus", "Ceger", "Cilangkap", "Lubang Buaya", "Munjul", "Pondok Ranggon", "Cipayung", "Setu"],
         "Ciracas": ["Cibubur", "Ciracas", "Kelapa Dua Wetan", "Rambutan", "Susukan"],
@@ -120,9 +120,13 @@ const createLog = async (userEmail, action) => {
             action,
             timestamp: Timestamp.now()
         });
-    } catch (error) {
-        console.error("Error creating log:", error);
     }
+    /*
+    catch (error) {
+        // Jangan tampilkan error di console untuk log aktivitas jika ini adalah masalah Firebase permission
+        // console.error("Error creating log:", error); 
+    }
+    */
 };
 
 // --- KOMPONEN UTAMA: App ---
@@ -312,8 +316,8 @@ function Pengaturan() {
                             value={provinsi} 
                             onChange={(e) => {
                                 setProvinsi(e.target.value);
-                                setNamaKecamatan(''); // Reset kecamatan ketika provinsi berubah
-                                setNamaKelurahan(''); // Reset kelurahan
+                                setNamaKecamatan(''); 
+                                setNamaKelurahan(''); 
                             }} 
                             options={['Pilih Provinsi', ...OPSI.provinsi]}
                         />
@@ -323,7 +327,7 @@ function Pengaturan() {
                             value={namaKecamatan} 
                             onChange={(e) => {
                                 setNamaKecamatan(e.target.value);
-                                setNamaKelurahan(''); // Reset kelurahan ketika kecamatan berubah
+                                setNamaKelurahan(''); 
                             }} 
                             options={['Pilih Kecamatan', ...OPSI.daftarKecamatan]}
                             disabled={!provinsi || provinsi === 'Pilih Provinsi'}
@@ -543,6 +547,7 @@ function KartuKeluarga({ userProfile }) {
     const [wargaDalamKK, setWargaDalamKK] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [infoModalMessage, setInfoModalMessage] = useState(''); // Untuk pesan info download
 
     // Ref untuk komponen KartuKeluargaviewer agar bisa di-capture oleh html2canvas
     const kkViewerRef = useRef(null);
@@ -584,7 +589,7 @@ function KartuKeluarga({ userProfile }) {
                     return 0;
                 });
                 setWargaDalamKK(data);
-                await createLog(userProfile.email, `Mencari Kartu Keluarga dengan No. KK: ${noKK}`);
+                createLog(userProfile.email, `Mencari Kartu Keluarga dengan No. KK: ${noKK}`);
             }
         } catch (err) {
             console.error("Error searching KK:", err);
@@ -602,13 +607,13 @@ function KartuKeluarga({ userProfile }) {
         
         if (kkViewerRef.current) {
             // Penting: Pastikan lebar kontainer KK di browser cukup untuk konten penuh
-            // agar html2canvas tidak memotongnya. Anda mungkin perlu scroll ke kanan
-            // di browser sebelum mengklik unduh jika konten sangat lebar.
+            // Agar html2canvas tidak memotongnya. Anda mungkin perlu memaksa lebar div KartuKeluargaviewer
+            // di CSS atau inline style, seperti 'minWidth: "1200px"'.
             const canvas = await html2canvas(kkViewerRef.current, {
                 scale: 2, 
                 useCORS: true, 
                 allowTaint: true,
-                // Pastikan seluruh elemen terlihat di viewport agar tidak terpotong
+                // Mengatur windowWidth dan windowHeight agar html2canvas melihat seluruh area scroll
                 windowWidth: kkViewerRef.current.scrollWidth,
                 windowHeight: kkViewerRef.current.scrollHeight,
             }); 
@@ -639,7 +644,7 @@ function KartuKeluarga({ userProfile }) {
             pdf.addImage(imgData, 'JPEG', x, y, imgPdfWidth, imgPdfHeight);
             
             pdf.save(`Kartu_Keluarga_${noKK}.pdf`);
-            await createLog(userProfile.email, `Mengunduh PDF Kartu Keluarga No. KK: ${noKK}`);
+            createLog(userProfile.email, `Mengunduh PDF Kartu Keluarga No. KK: ${noKK}`);
         } else {
             setError("Elemen Kartu Keluarga tidak ditemukan untuk diunduh.");
         }
@@ -647,7 +652,7 @@ function KartuKeluarga({ userProfile }) {
 
     const downloadJPG = async () => {
         if (wargaDalamKK.length === 0) {
-            setError("Tidak ada data Kartu Keluarga untuk diunduh.");
+            setInfoModalMessage("Tidak ada data Kartu Keluarga untuk diunduh.");
             return;
         }
 
@@ -667,7 +672,7 @@ function KartuKeluarga({ userProfile }) {
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            await createLog(userProfile.email, `Mengunduh JPG Kartu Keluarga No. KK: ${noKK}`);
+            createLog(userProfile.email, `Mengunduh JPG Kartu Keluarga No. KK: ${noKK}`);
         } else {
                 setError("Elemen Kartu Keluarga tidak ditemukan untuk diunduh.");
         }
@@ -713,15 +718,17 @@ function KartuKeluarga({ userProfile }) {
                     {/* Render KartuKeluargaviewer dan attach ref */}
                     {/* PENTING: Untuk memastikan HTML2Canvas menangkap seluruh konten, 
                         pastikan div ini memiliki lebar yang cukup di browser Anda.
-                        Anda mungkin perlu memaksa lebar min-width yang sangat besar jika kontennya lebar.
-                        Contoh: style={{ minWidth: '1200px' }} di div di bawah.
-                        Dan pastikan tidak ada overflow: hidden; pada parent container yang membatasi.
+                        Saya telah menetapkan minWidth: '1200px' sebagai contoh.
+                        Anda mungkin perlu menyesuaikan nilai ini di CSS jika konten masih terpotong.
+                        Misalnya, jika isi tabel KK sangat lebar.
                     */}
                     <div ref={kkViewerRef} className="border p-4 rounded-md overflow-x-auto" style={{ minWidth: '1200px' }}>
                         <KartuKeluargaviewer dataKK={wargaDalamKK} noKK={noKK} headerData={headerData} />
                     </div>
                 </div>
             )}
+
+            {infoModalMessage && <InfoModal message={infoModalMessage} onClose={() => setInfoModalMessage('')} />}
         </div>
     );
 }
@@ -952,7 +959,12 @@ function DataWarga({ userProfile }) {
             'RW': w.rw,
             'Status Tinggal': w.statusTinggal,
             'Kewarganegaraan': w.kewarganegaraan,
-            'URL Foto': w.photoUrl || '' 
+            'URL Foto': w.photoUrl || '',
+            'Provinsi': w.provinsi || '',
+            'Kecamatan': w.kecamatan || '',
+            'Kelurahan': w.kelurahan || '',
+            'Kabupaten/Kota': w.kabupatenKota || '',
+            'Kode Pos': w.kodePos || '',
         }));
         const worksheet = XLSX.utils.json_to_sheet(dataToExport);
         const workbook = XLSX.utils.book_new();
@@ -1202,11 +1214,11 @@ function WargaModal({ isOpen, onClose, wargaData, userProfile }) {
             kewarganegaraan: 'WNI', statusHubungan: OPSI.statusHubungan[0],
             golonganDarah: OPSI.golonganDarah[0], namaAyah: '', namaIbu: '', photoUrl: '',
             // Menambahkan field lokasi ke WargaModal
-            provinsi: localStorage.getItem('provinsi') || '',
-            kecamatan: localStorage.getItem('namaKecamatan') || '',
-            kelurahan: localStorage.getItem('namaKelurahan') || '', // Menggunakan "kelurahan" sebagai field
-            kabupatenKota: localStorage.getItem('kabupatenKota') || '',
-            kodePos: localStorage.getItem('kodePos') || '',
+            provinsi: localStorage.getItem('provinsi') || '', // Default dari pengaturan
+            kecamatan: localStorage.getItem('namaKecamatan') || '', // Default dari pengaturan
+            kelurahan: localStorage.getItem('namaKelurahan') || '', // Default dari pengaturan
+            kabupatenKota: localStorage.getItem('kabupatenKota') || '', // Default dari pengaturan
+            kodePos: localStorage.getItem('kodePos') || '', // Default dari pengaturan
         };
         setFormData(wargaData || initialData);
         if (wargaData?.photoUrl) {
@@ -1258,7 +1270,7 @@ function WargaModal({ isOpen, onClose, wargaData, userProfile }) {
                 return data.secure_url;
             } else {
                 console.error("Cloudinary upload error:", data);
-                alert("Gagal mengunggah foto ke Cloudinary.");
+                alert("Gagal mengunggah foto ke Cloudinary. Pesan: " + (data.error?.message || "Unknown error"));
                 return null;
             }
         } catch (error) {
@@ -1294,6 +1306,7 @@ function WargaModal({ isOpen, onClose, wargaData, userProfile }) {
             onClose();
         } catch (error) {
             console.error("Error saving document: ", error);
+            alert("Terjadi kesalahan saat menyimpan data: " + error.message);
         } finally {
             setSubmitting(false);
         }
@@ -1430,11 +1443,11 @@ function ImportModal({ isOpen, onClose, userProfile }) {
                         'Status Tinggal': 'statusTinggal',
                         'Kewarganegaraan': 'kewarganegaraan',
                         'URL Foto': 'photoUrl', 
-                        'Provinsi': 'provinsi', // Menambahkan ke headerMap
-                        'Kecamatan': 'kecamatan', // Menambahkan ke headerMap
-                        'Kelurahan': 'kelurahan', // Menambahkan ke headerMap
-                        'Kabupaten/Kota': 'kabupatenKota', // Menambahkan ke headerMap
-                        'Kode Pos': 'kodePos', // Menambahkan ke headerMap
+                        'Provinsi': 'provinsi', 
+                        'Kecamatan': 'kecamatan', 
+                        'Kelurahan': 'kelurahan', 
+                        'Kabupaten/Kota': 'kabupatenKota', 
+                        'Kode Pos': 'kodePos', 
                     };
                     const parsedData = jsonData.slice(1).map(row => {
                         let obj = {};
@@ -1478,7 +1491,7 @@ function ImportModal({ isOpen, onClose, userProfile }) {
             await createLog(userProfile.email, `Mengimpor ${data.length} data warga dari file Excel.`);
             onClose();
         } catch (err) {
-            setError("Terjadi kesalahan saat menyimpan data ke database.");
+            setError("Terjadi kesalahan saat menyimpan data ke database. Pesan: " + error.message);
             console.error(err);
         } finally {
             setImporting(false);
